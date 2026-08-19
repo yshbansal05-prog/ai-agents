@@ -73,26 +73,37 @@ export default function StatsModal({ isOpen, onClose, agents, tasks }: StatsModa
             </div>
 
             <div className="space-y-2 pt-1">
-              {[
-                { name: 'Arnav Sharma (CEO)', role: 'Executive Lead', efficiency: 94, load: 'Moderate' },
-                { name: 'Meera Iyer (Research)', role: 'Market Intel', efficiency: 98, load: 'Completed' },
-                { name: 'Rohan Verma (CTO)', role: 'Architecture', efficiency: 91, load: 'In Review' },
-                { name: 'Isha Malhotra (Marketing)', role: 'GTM Strategy', efficiency: 88, load: 'High (Active)' },
-                { name: 'Kabir Singh (Finance)', role: 'Unit Economics', efficiency: 96, load: 'Completed' }
-              ].map((ag) => (
-                <div key={ag.name} className="space-y-1">
-                  <div className="flex justify-between text-[10px] font-bold">
-                    <span>{ag.name}</span>
-                    <span className="text-[#6b5b52]">{ag.efficiency}% Score</span>
+              {agents.map((ag) => {
+                const agentTasks = tasks.filter(
+                  (t) =>
+                    t.assigned_agent?.toLowerCase().includes(ag.name.toLowerCase()) ||
+                    t.assigned_agent?.toLowerCase().includes(ag.role.toLowerCase())
+                );
+                const doneTasks = agentTasks.filter((t) => t.status === 'COMPLETED').length;
+                const score =
+                  agentTasks.length > 0
+                    ? Math.round((doneTasks / agentTasks.length) * 40 + 60)
+                    : ag.status === 'COMPLETED'
+                    ? 98
+                    : ag.status === 'WORKING'
+                    ? 92
+                    : 90;
+
+                return (
+                  <div key={ag.id} className="space-y-1">
+                    <div className="flex justify-between text-[10px] font-bold">
+                      <span>{ag.name} ({ag.role})</span>
+                      <span className="text-[#6b5b52]">{score}% Score ({ag.status})</span>
+                    </div>
+                    <div className="w-full h-2 bg-[#d8c3b1] rounded-full overflow-hidden border border-[#2c2621]">
+                      <div
+                        className="h-full bg-emerald-600 rounded-full transition-all duration-500"
+                        style={{ width: `${score}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full h-2 bg-[#d8c3b1] rounded-full overflow-hidden border border-[#2c2621]">
-                    <div
-                      className="h-full bg-emerald-600 rounded-full"
-                      style={{ width: `${ag.efficiency}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
