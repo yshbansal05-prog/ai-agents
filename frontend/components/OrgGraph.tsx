@@ -14,6 +14,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Agent } from '@/types';
 import { Bot, CheckCircle2, Clock, AlertTriangle, Cpu, ShieldCheck, Database, FileText } from 'lucide-react';
+import { sound } from '@/utils/sound';
 
 interface OrgGraphProps {
   agents: Agent[];
@@ -33,29 +34,29 @@ const AgentNode = ({ data }: NodeProps) => {
     switch (status) {
       case 'WORKING':
         return (
-          <div className="flex items-center space-x-1 bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded-full text-xs font-semibold animate-pulse">
-            <Cpu className="w-3 h-3 animate-spin" />
+          <div className="flex items-center space-x-1 bg-orange-500 text-white px-2 py-0.5 rounded text-[9px] font-black uppercase animate-pulse border border-[#2c2621]">
+            <Cpu className="w-2.5 h-2.5 animate-spin" />
             <span>Working</span>
           </div>
         );
       case 'COMPLETED':
         return (
-          <div className="flex items-center space-x-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full text-xs font-semibold">
-            <CheckCircle2 className="w-3 h-3" />
-            <span>Completed</span>
+          <div className="flex items-center space-x-1 bg-emerald-600 text-white px-2 py-0.5 rounded text-[9px] font-black uppercase border border-[#2c2621]">
+            <CheckCircle2 className="w-2.5 h-2.5" />
+            <span>Done</span>
           </div>
         );
       case 'FAILED':
         return (
-          <div className="flex items-center space-x-1 bg-rose-500/20 text-rose-400 border border-rose-500/40 px-2 py-0.5 rounded-full text-xs font-semibold">
-            <AlertTriangle className="w-3 h-3" />
+          <div className="flex items-center space-x-1 bg-rose-600 text-white px-2 py-0.5 rounded text-[9px] font-black uppercase border border-[#2c2621]">
+            <AlertTriangle className="w-2.5 h-2.5" />
             <span>Failed</span>
           </div>
         );
       default:
         return (
-          <div className="flex items-center space-x-1 bg-slate-700/50 text-slate-400 border border-slate-600 px-2 py-0.5 rounded-full text-xs font-semibold">
-            <Clock className="w-3 h-3" />
+          <div className="flex items-center space-x-1 bg-amber-400 text-[#2c2621] px-2 py-0.5 rounded text-[9px] font-black uppercase border border-[#2c2621]">
+            <Clock className="w-2.5 h-2.5" />
             <span>Waiting</span>
           </div>
         );
@@ -63,43 +64,47 @@ const AgentNode = ({ data }: NodeProps) => {
   };
 
   const getRoleIcon = (name: string) => {
-    if (name.includes('CEO')) return <ShieldCheck className="w-5 h-5 text-indigo-400" />;
-    if (name.includes('Research')) return <Bot className="w-5 h-5 text-cyan-400" />;
-    if (name.includes('CTO')) return <Cpu className="w-5 h-5 text-emerald-400" />;
-    if (name.includes('Marketing')) return <Bot className="w-5 h-5 text-purple-400" />;
-    if (name.includes('Development')) return <Bot className="w-5 h-5 text-amber-400" />;
-    if (name.includes('Memory')) return <Database className="w-5 h-5 text-blue-400" />;
-    if (name.includes('Decision')) return <ShieldCheck className="w-5 h-5 text-amber-400" />;
-    return <FileText className="w-5 h-5 text-emerald-400" />;
+    if (name.includes('CEO')) return <ShieldCheck className="w-4 h-4 text-[#8c3b00]" />;
+    if (name.includes('Research')) return <Bot className="w-4 h-4 text-cyan-800" />;
+    if (name.includes('CTO')) return <Cpu className="w-4 h-4 text-emerald-800" />;
+    if (name.includes('Marketing')) return <Bot className="w-4 h-4 text-purple-800" />;
+    if (name.includes('Development') || name.includes('Finance')) return <Bot className="w-4 h-4 text-amber-800" />;
+    if (name.includes('Memory')) return <Database className="w-4 h-4 text-emerald-800" />;
+    if (name.includes('Decision')) return <ShieldCheck className="w-4 h-4 text-amber-800" />;
+    return <FileText className="w-4 h-4 text-emerald-800" />;
   };
 
   return (
     <div
-      className={`px-4 py-3 rounded-xl border transition-all duration-200 cursor-pointer shadow-lg backdrop-blur-md min-w-[200px] ${
+      className={`px-3 py-2.5 rounded-lg border-2 transition-all duration-200 cursor-pointer shadow-md font-mono min-w-[190px] ${
         isSelected
-          ? 'bg-slate-800/90 border-indigo-500 ring-2 ring-indigo-500/50'
-          : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 hover:bg-slate-850'
+          ? 'bg-[#fffdfa] border-[#2c2621] ring-2 ring-amber-600'
+          : 'bg-[#f4ece1] border-[#2c2621] hover:bg-[#ebdcd0]'
       }`}
     >
-      <Handle type="target" position={Position.Top} className="!bg-indigo-500 !w-3 !h-3" />
-      
-      <div className="flex items-center justify-between space-x-2 mb-2">
-        <div className="flex items-center space-x-2">
+      <Handle type="target" position={Position.Top} className="!bg-[#2c2621] !w-2.5 !h-2.5" />
+
+      <div className="flex items-center justify-between space-x-1.5 mb-1">
+        <div className="flex items-center space-x-1.5">
           {getRoleIcon(agent?.name || (data.label as string) || '')}
-          <span className="text-sm font-bold text-slate-100">{agent?.name || (data.label as string) || ''}</span>
+          <span className="text-xs font-black text-[#2c2621] truncate max-w-[100px]">
+            {agent?.name || (data.label as string) || ''}
+          </span>
         </div>
         {agent && getStatusBadge(agent.status)}
       </div>
-      
-      <p className="text-xs text-slate-400 line-clamp-1">{agent?.role || (data.sublabel as string) || ''}</p>
-      
+
+      <p className="text-[9px] text-[#6b5b52] font-bold truncate">
+        {agent?.role || (data.sublabel as string) || ''}
+      </p>
+
       {agent?.current_task && (
-        <div className="mt-2 text-[11px] text-indigo-300/80 bg-indigo-950/40 p-1.5 rounded border border-indigo-900/50 line-clamp-1">
+        <div className="mt-1.5 text-[8px] font-bold text-[#2c2621] bg-[#ebdcd0] p-1 rounded border border-[#d8c3b1] truncate">
           {agent.current_task}
         </div>
       )}
 
-      <Handle type="source" position={Position.Bottom} className="!bg-indigo-500 !w-3 !h-3" />
+      <Handle type="source" position={Position.Bottom} className="!bg-[#2c2621] !w-2.5 !h-2.5" />
     </div>
   );
 };
@@ -117,11 +122,11 @@ export default function OrgGraph({
   const getAgent = (roleSubstring: string) =>
     agents.find((a) => a.name.toLowerCase().includes(roleSubstring.toLowerCase()));
 
-  const ceoAgent = getAgent('CEO');
-  const researchAgent = getAgent('Research');
-  const ctoAgent = getAgent('CTO');
-  const marketingAgent = getAgent('Marketing');
-  const devAgent = getAgent('Development');
+  const ceoAgent = getAgent('CEO') || getAgent('Arnav');
+  const researchAgent = getAgent('Research') || getAgent('Meera');
+  const ctoAgent = getAgent('CTO') || getAgent('Rohan');
+  const marketingAgent = getAgent('Marketing') || getAgent('Isha');
+  const devAgent = getAgent('Development') || getAgent('Finance') || getAgent('Kabir');
 
   const nodes: Node[] = [
     // Top Level: CEO
@@ -130,7 +135,7 @@ export default function OrgGraph({
       type: 'agentNode',
       position: { x: 340, y: 20 },
       data: {
-        agent: ceoAgent || { name: 'CEO / Orchestrator', role: 'Executive Lead', status: 'WAITING' },
+        agent: ceoAgent || { id: 'agent-ceo', name: 'Arnav Sharma', role: 'Executive Lead', status: 'WAITING', capabilities: [], dependencies: [] },
         isSelected: selectedAgentId === ceoAgent?.id
       }
     },
@@ -138,36 +143,36 @@ export default function OrgGraph({
     {
       id: 'research',
       type: 'agentNode',
-      position: { x: 40, y: 170 },
+      position: { x: 40, y: 160 },
       data: {
-        agent: researchAgent || { name: 'Research Agent', role: 'Market Intel', status: 'WAITING' },
+        agent: researchAgent || { id: 'agent-research', name: 'Meera Iyer', role: 'Market Intel', status: 'WAITING', capabilities: [], dependencies: [] },
         isSelected: selectedAgentId === researchAgent?.id
       }
     },
     {
       id: 'cto',
       type: 'agentNode',
-      position: { x: 270, y: 170 },
+      position: { x: 250, y: 160 },
       data: {
-        agent: ctoAgent || { name: 'Strategy / CTO Agent', role: 'Tech Architecture', status: 'WAITING' },
+        agent: ctoAgent || { id: 'agent-cto', name: 'Rohan Verma', role: 'Tech Architecture', status: 'WAITING', capabilities: [], dependencies: [] },
         isSelected: selectedAgentId === ctoAgent?.id
       }
     },
     {
       id: 'marketing',
       type: 'agentNode',
-      position: { x: 500, y: 170 },
+      position: { x: 460, y: 160 },
       data: {
-        agent: marketingAgent || { name: 'Marketing Agent', role: 'GTM Strategy', status: 'WAITING' },
+        agent: marketingAgent || { id: 'agent-marketing', name: 'Isha Malhotra', role: 'GTM Strategy', status: 'WAITING', capabilities: [], dependencies: [] },
         isSelected: selectedAgentId === marketingAgent?.id
       }
     },
     {
       id: 'dev',
       type: 'agentNode',
-      position: { x: 730, y: 170 },
+      position: { x: 670, y: 160 },
       data: {
-        agent: devAgent || { name: 'Development Agent', role: 'Software Engineering', status: 'WAITING' },
+        agent: devAgent || { id: 'agent-dev', name: 'Kabir Singh', role: 'Unit Economics', status: 'WAITING', capabilities: [], dependencies: [] },
         isSelected: selectedAgentId === devAgent?.id
       }
     },
@@ -175,15 +180,17 @@ export default function OrgGraph({
     {
       id: 'memory',
       type: 'agentNode',
-      position: { x: 340, y: 320 },
+      position: { x: 340, y: 300 },
       data: {
-        label: 'Shared Company Memory',
-        sublabel: 'PostgreSQL Memory Layer',
+        label: 'Shared Memory Core',
+        sublabel: 'PostgreSQL Knowledge Layer',
         agent: {
           id: 'mem-node',
-          name: 'Shared Memory',
-          role: 'PostgreSQL Persistence',
-          status: companyStatus === 'IN_PROGRESS' || companyStatus === 'COMPLETED' ? 'COMPLETED' : 'WAITING'
+          name: 'Memory Core',
+          role: 'Shared Memory Racks',
+          status: companyStatus === 'IN_PROGRESS' || companyStatus === 'COMPLETED' ? 'COMPLETED' : 'WAITING',
+          capabilities: [],
+          dependencies: []
         }
       }
     },
@@ -191,15 +198,17 @@ export default function OrgGraph({
     {
       id: 'decision',
       type: 'agentNode',
-      position: { x: 340, y: 450 },
+      position: { x: 340, y: 420 },
       data: {
-        label: 'CEO Decision Engine',
-        sublabel: 'Conflict Resolution & Alignment',
+        label: 'Conflict Arbiter',
+        sublabel: 'Resolution & Alignment',
         agent: {
           id: 'dec-node',
-          name: 'CEO Decision',
-          role: 'Conflict Resolution',
-          status: hasDecision ? 'COMPLETED' : companyStatus === 'IN_PROGRESS' ? 'WORKING' : 'WAITING'
+          name: 'Conflict Arbiter',
+          role: 'CEO Executive Decision',
+          status: hasDecision ? 'COMPLETED' : companyStatus === 'IN_PROGRESS' ? 'WORKING' : 'WAITING',
+          capabilities: [],
+          dependencies: []
         }
       }
     },
@@ -207,48 +216,51 @@ export default function OrgGraph({
     {
       id: 'outcome',
       type: 'agentNode',
-      position: { x: 340, y: 580 },
+      position: { x: 340, y: 540 },
       data: {
-        label: 'Final Deliverable Outcome',
-        sublabel: 'Executive Organization Report',
+        label: 'Final Deliverable',
+        sublabel: 'Consolidated Executive Report',
         agent: {
           id: 'out-node',
-          name: 'Final Outcome Report',
-          role: 'Executive Plan',
-          status: hasReport ? 'COMPLETED' : 'WAITING'
+          name: 'Executive Deliverable',
+          role: 'Final Blueprint & Plan',
+          status: hasReport ? 'COMPLETED' : 'WAITING',
+          capabilities: [],
+          dependencies: []
         }
       }
     }
   ];
 
   const edges: Edge[] = [
-    { id: 'e-ceo-research', source: 'ceo', target: 'research', animated: researchAgent?.status === 'WORKING' },
-    { id: 'e-ceo-cto', source: 'ceo', target: 'cto', animated: ctoAgent?.status === 'WORKING' },
-    { id: 'e-ceo-marketing', source: 'ceo', target: 'marketing', animated: marketingAgent?.status === 'WORKING' },
-    { id: 'e-cto-dev', source: 'cto', target: 'dev', animated: devAgent?.status === 'WORKING' },
-    { id: 'e-research-mem', source: 'research', target: 'memory' },
-    { id: 'e-cto-mem', source: 'cto', target: 'memory' },
-    { id: 'e-mkt-mem', source: 'marketing', target: 'memory' },
-    { id: 'e-dev-mem', source: 'dev', target: 'memory' },
-    { id: 'e-mem-decision', source: 'memory', target: 'decision', animated: hasDecision },
-    { id: 'e-decision-outcome', source: 'decision', target: 'outcome', animated: hasReport }
+    { id: 'e-ceo-research', source: 'ceo', target: 'research', style: { stroke: '#2c2621', strokeWidth: 2 } },
+    { id: 'e-ceo-cto', source: 'ceo', target: 'cto', style: { stroke: '#2c2621', strokeWidth: 2 } },
+    { id: 'e-ceo-marketing', source: 'ceo', target: 'marketing', style: { stroke: '#2c2621', strokeWidth: 2 } },
+    { id: 'e-cto-dev', source: 'cto', target: 'dev', style: { stroke: '#2c2621', strokeWidth: 2 } },
+    { id: 'e-research-mem', source: 'research', target: 'memory', style: { stroke: '#2c2621', strokeWidth: 2 } },
+    { id: 'e-cto-mem', source: 'cto', target: 'memory', style: { stroke: '#2c2621', strokeWidth: 2 } },
+    { id: 'e-mkt-mem', source: 'marketing', target: 'memory', style: { stroke: '#2c2621', strokeWidth: 2 } },
+    { id: 'e-dev-mem', source: 'dev', target: 'memory', style: { stroke: '#2c2621', strokeWidth: 2 } },
+    { id: 'e-mem-decision', source: 'memory', target: 'decision', style: { stroke: '#2c2621', strokeWidth: 2 } },
+    { id: 'e-decision-outcome', source: 'decision', target: 'outcome', style: { stroke: '#2c2621', strokeWidth: 2 } }
   ];
 
   return (
-    <div className="w-full h-[620px] bg-slate-950/80 rounded-2xl border border-slate-800 overflow-hidden relative shadow-2xl">
+    <div className="w-full h-[600px] bg-[#5f8b65]/20 rounded-2xl border-4 border-[#2c2621] overflow-hidden relative shadow-2xl">
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         onNodeClick={(_, node) => {
+          sound.playClick();
           if (node.data.agent && (node.data.agent as Agent).id) {
             onSelectAgent(node.data.agent as Agent);
           }
         }}
         fitView
       >
-        <Background color="#334155" gap={20} size={1} />
-        <Controls className="bg-slate-900 border-slate-800 text-slate-200 fill-slate-200" />
+        <Background color="#2c2621" gap={24} size={1} />
+        <Controls className="bg-[#ebdcd0] border-2 border-[#2c2621] text-[#2c2621] fill-[#2c2621]" />
       </ReactFlow>
     </div>
   );

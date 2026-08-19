@@ -11,176 +11,569 @@ import ActivityFeed from '@/components/ActivityFeed';
 import CompanyMemoryView from '@/components/CompanyMemoryView';
 import ConflictsView from '@/components/ConflictsView';
 import FinalReportView from '@/components/FinalReportView';
-import { BarChart3, Settings, X, GitFork, Gamepad2, Cpu, Activity, Database, Zap, FileText } from 'lucide-react';
+import DiagramBoardModal from '@/components/DiagramBoardModal';
+import MemoryCoreModal from '@/components/MemoryCoreModal';
+import StatsModal from '@/components/StatsModal';
+import SettingsModal from '@/components/SettingsModal';
 
-const API_BASE = 'http://localhost:8000/api/company';
+import {
+  INITIAL_COMPANY,
+  INITIAL_AGENTS,
+  INITIAL_TASKS,
+  INITIAL_MEMORIES,
+  INITIAL_DECISIONS,
+  INITIAL_LOGS
+} from '@/utils/initialState';
+import { sound } from '@/utils/sound';
+
+import {
+  BarChart3,
+  Settings,
+  X,
+  GitFork,
+  Gamepad2,
+  Cpu,
+  Activity,
+  Database,
+  Zap,
+  FileText
+} from 'lucide-react';
 
 export default function Dashboard() {
-  const [goalInput, setGoalInput] = useState<string>('Build an AI-powered internship platform for college students.');
-  const [company, setCompany] = useState<Company | null>(null);
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [memories, setMemories] = useState<Memory[]>([]);
-  const [decisions, setDecisions] = useState<Decision[]>([]);
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [goalInput, setGoalInput] = useState<string>(INITIAL_COMPANY.goal);
+  const [company, setCompany] = useState<Company>(INITIAL_COMPANY);
+  const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
+  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [memories, setMemories] = useState<Memory[]>(INITIAL_MEMORIES);
+  const [decisions, setDecisions] = useState<Decision[]>(INITIAL_DECISIONS);
+  const [logs, setLogs] = useState<ActivityLog[]>(INITIAL_LOGS);
+
   const [viewMode, setViewMode] = useState<'PIXEL_OFFICE' | 'GRAPH'>('PIXEL_OFFICE');
   const [activeTab, setActiveTab] = useState<'GRAPH' | 'ACTIVITY' | 'MEMORY' | 'CONFLICTS' | 'REPORT'>('GRAPH');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+
+  // Modals state
+  const [isDiagramOpen, setIsDiagramOpen] = useState<boolean>(false);
+  const [isMemoryCoreOpen, setIsMemoryCoreOpen] = useState<boolean>(false);
+  const [isStatsOpen, setIsStatsOpen] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+
+  // Settings configuration
+  const [apiBase, setApiBase] = useState<string>('http://localhost:8000/api/company');
+  const [simulationSpeed, setSimulationSpeed] = useState<number>(1);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
   const sseRef = useRef<EventSource | null>(null);
+  const simulationTimers = useRef<NodeJS.Timeout[]>([]);
 
-  // Fetch initial company datasets
-  const fetchAllData = async (companyId: string) => {
-    try {
-      const [compRes, agRes, taskRes, memRes, decRes, actRes] = await Promise.all([
-        fetch(`${API_BASE}/${companyId}`).then((r) => r.json()),
-        fetch(`${API_BASE}/${companyId}/agents`).then((r) => r.json()),
-        fetch(`${API_BASE}/${companyId}/tasks`).then((r) => r.json()),
-        fetch(`${API_BASE}/${companyId}/memory`).then((r) => r.json()),
-        fetch(`${API_BASE}/${companyId}/decisions`).then((r) => r.json()),
-        fetch(`${API_BASE}/${companyId}/activity`).then((r) => r.json())
-      ]);
-
-      setCompany(compRes);
-      setAgents(agRes);
-      setTasks(taskRes);
-      setMemories(memRes);
-      setDecisions(decRes);
-      setLogs(actRes);
-    } catch (e) {
-      console.error('Error fetching company state:', e);
-    }
+  const clearSimulationTimers = () => {
+    simulationTimers.current.forEach((t) => clearTimeout(t));
+    simulationTimers.current = [];
   };
 
-  // Connect Server-Sent Events (SSE) stream
+  // Reset to initial baseline
+  const handleResetOrg = () => {
+    clearSimulationTimers();
+    if (sseRef.current) sseRef.current.close();
+    setCompany(INITIAL_COMPANY);
+    setAgents(INITIAL_AGENTS);
+    setTasks(INITIAL_TASKS);
+    setMemories(INITIAL_MEMORIES);
+    setDecisions(INITIAL_DECISIONS);
+    setLogs(INITIAL_LOGS);
+    setIsRunning(false);
+    setIsPaused(false);
+    setSelectedAgent(null);
+  };
+
+  // Connect SSE for live backend
   const connectSSE = (companyId: string) => {
-    if (sseRef.current) {
-      sseRef.current.close();
-    }
+    if (sseRef.current) sseRef.current.close();
+    try {
+      const sse = new EventSource(`${apiBase}/${companyId}/events`);
+      sseRef.current = sse;
 
-    const sse = new EventSource(`${API_BASE}/${companyId}/events`);
-    sseRef.current = sse;
+      const handleEvent = (data: any) => {
+        if (isPaused) return;
 
-    const handleEvent = (data: any) => {
-      if (data.event_type === 'agent_status') {
-        setAgents((prev) =>
-          prev.map((a) =>
-            a.name.toLowerCase().includes(data.data.agent_name.toLowerCase()) ||
-            data.data.agent_name.toLowerCase().includes(a.name.toLowerCase())
-              ? { ...a, status: data.data.status, current_task: data.data.current_task }
-              : a
-          )
-        );
-      } else if (data.event_type === 'task_status') {
-        setTasks((prev) => {
-          const exists = prev.some((t) => t.title === data.data.title);
-          if (exists) {
-            return prev.map((t) => (t.title === data.data.title ? { ...t, status: data.data.status, result: data.data.result } : t));
-          } else {
-            return [...prev, data.data];
+        if (data.event_type === 'agent_status') {
+          sound.playTick();
+          setAgents((prev) =>
+            prev.map((a) =>
+              a.name.toLowerCase().includes(data.data.agent_name.toLowerCase()) ||
+              data.data.agent_name.toLowerCase().includes(a.name.toLowerCase())
+                ? { ...a, status: data.data.status, current_task: data.data.current_task }
+                : a
+            )
+          );
+        } else if (data.event_type === 'task_status') {
+          sound.playTick();
+          setTasks((prev) => {
+            const exists = prev.some((t) => t.title === data.data.title);
+            if (exists) {
+              return prev.map((t) =>
+                t.title === data.data.title ? { ...t, status: data.data.status, result: data.data.result } : t
+              );
+            } else {
+              return [...prev, data.data];
+            }
+          });
+        } else if (data.event_type === 'activity_log') {
+          sound.playTick();
+          setLogs((prev) => [...prev, data.data]);
+        } else if (data.event_type === 'memory_added') {
+          setMemories((prev) => [...prev, data.data]);
+          if (data.data.key === 'FINAL_EXECUTIVE_REPORT') {
+            sound.playSuccess();
+            setCompany((prev) => ({ ...prev, final_report: data.data.value, status: 'COMPLETED' }));
+            setIsRunning(false);
+          }
+        } else if (data.event_type === 'decision_made') {
+          setDecisions((prev) => [...prev, data.data]);
+        }
+      };
+
+      const eventTypes = ['agent_status', 'task_status', 'activity_log', 'memory_added', 'decision_made'];
+      eventTypes.forEach((evtType) => {
+        sse.addEventListener(evtType, (evt: MessageEvent) => {
+          try {
+            const payload = JSON.parse(evt.data);
+            handleEvent(payload);
+          } catch (err) {
+            console.error(`SSE event [${evtType}] parse error:`, err);
           }
         });
-      } else if (data.event_type === 'activity_log') {
-        setLogs((prev) => [...prev, data.data]);
-      } else if (data.event_type === 'memory_added') {
-        setMemories((prev) => [...prev, data.data]);
-        if (data.data.key === 'FINAL_EXECUTIVE_REPORT') {
-          setCompany((prev) => (prev ? { ...prev, final_report: data.data.value, status: 'COMPLETED' } : null));
-          setIsRunning(false);
-        }
-      } else if (data.event_type === 'decision_made') {
-        setDecisions((prev) => [...prev, data.data]);
-      }
-    };
-
-    sse.onmessage = (evt) => {
-      try {
-        const payload = JSON.parse(evt.data);
-        handleEvent(payload);
-      } catch (err) {
-        console.error('SSE parse error:', err);
-      }
-    };
-
-    const eventTypes = ['agent_status', 'task_status', 'activity_log', 'memory_added', 'decision_made'];
-    eventTypes.forEach((evtType) => {
-      sse.addEventListener(evtType, (evt: MessageEvent) => {
-        try {
-          const payload = JSON.parse(evt.data);
-          handleEvent(payload);
-        } catch (err) {
-          console.error(`SSE event [${evtType}] error:`, err);
-        }
       });
-    });
+    } catch (e) {
+      console.warn('Backend SSE unavailable, fallback simulation active:', e);
+    }
   };
 
-  // Start Organization Workflow
+  // Run simulated step-by-step pipeline when offline or testing
+  const runSimulatedPipeline = (customGoal: string) => {
+    clearSimulationTimers();
+    setIsRunning(true);
+
+    const goalToUse = customGoal.trim();
+    setCompany({
+      id: `comp-${Date.now()}`,
+      name: 'AI ORG OS V1.0.0 - DEBUGGERS INC.',
+      goal: goalToUse,
+      status: 'IN_PROGRESS',
+      created_at: new Date().toISOString()
+    });
+
+    // Reset initial activity for new goal
+    const startTime = new Date();
+    const formatTime = (offsetSec: number) => {
+      const d = new Date(startTime.getTime() + offsetSec * 1000);
+      return d.toISOString();
+    };
+
+    setLogs([
+      {
+        id: `log-${Date.now()}-1`,
+        agent_name: 'CEO',
+        message: `CEO accepted new objective: "${goalToUse.slice(0, 45)}..."`,
+        level: 'INFO',
+        timestamp: formatTime(0)
+      }
+    ]);
+
+    setTasks([
+      {
+        id: 'sim-t1',
+        title: 'Conduct Market & Competitor Analysis',
+        description: 'Gather industry datasets, user pain points, and existing solution gaps.',
+        assigned_agent: 'Meera Iyer (Research)',
+        status: 'RUNNING',
+        priority: 'P1 High',
+        dependencies: []
+      },
+      {
+        id: 'sim-t2',
+        title: 'System Architecture & Tech Stack Spec',
+        description: 'Define microservices architecture, vector store schemas, and latency SLAs.',
+        assigned_agent: 'Rohan Verma (CTO)',
+        status: 'PENDING',
+        priority: 'P0 Critical',
+        dependencies: ['sim-t1']
+      },
+      {
+        id: 'sim-t3',
+        title: 'Go-To-Market Strategy & Viral Loops',
+        description: 'Establish acquisition channels, partnership agreements, and retention funnels.',
+        assigned_agent: 'Isha Malhotra (Marketing)',
+        status: 'PENDING',
+        priority: 'P1 High',
+        dependencies: ['sim-t1']
+      },
+      {
+        id: 'sim-t4',
+        title: 'Unit Economics & Infra Cost Modeling',
+        description: 'Calculate CAC/LTV, monthly serverless budget, and 18-month runway extension.',
+        assigned_agent: 'Kabir Singh (Finance)',
+        status: 'PENDING',
+        priority: 'P0 Critical',
+        dependencies: ['sim-t2']
+      }
+    ]);
+
+    setAgents((prev) =>
+      prev.map((a) =>
+        a.role.includes('CEO')
+          ? { ...a, status: 'WORKING', current_task: 'Breaking down objective and assigning tasks' }
+          : a.role.includes('Research')
+          ? { ...a, status: 'WORKING', current_task: 'Analyzing market opportunities & competitor gaps' }
+          : { ...a, status: 'WAITING', current_task: 'Awaiting dependency outputs' }
+      )
+    );
+
+    const delay = (ms: number) => ms / simulationSpeed;
+
+    // Simulation steps
+    const step1 = setTimeout(() => {
+      sound.playTick();
+      setLogs((prev) => [
+        ...prev,
+        {
+          id: `log-${Date.now()}-2`,
+          agent_name: 'CEO',
+          message: 'CEO dispatched 4 concurrent work streams across departments.',
+          level: 'SUCCESS',
+          timestamp: formatTime(2)
+        },
+        {
+          id: `log-${Date.now()}-3`,
+          agent_name: 'Research',
+          message: 'Meera (Research) completed market analysis. 78% target audience demand confirmed.',
+          level: 'SUCCESS',
+          timestamp: formatTime(4)
+        }
+      ]);
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === 'sim-t1'
+            ? { ...t, status: 'COMPLETED', result: 'Identified $1.8B TAM with 78% student demand score.' }
+            : t.id === 'sim-t2' || t.id === 'sim-t3'
+            ? { ...t, status: 'RUNNING' }
+            : t
+        )
+      );
+
+      setAgents((prev) =>
+        prev.map((a) =>
+          a.role.includes('Research')
+            ? { ...a, status: 'COMPLETED', current_task: 'Market analysis delivered' }
+            : a.role.includes('CTO')
+            ? { ...a, status: 'WORKING', current_task: 'Drafting distributed system architecture' }
+            : a.role.includes('Marketing')
+            ? { ...a, status: 'WORKING', current_task: 'Drafting campus growth playbooks' }
+            : a
+        )
+      );
+
+      setMemories((prev) => [
+        ...prev,
+        {
+          id: `mem-${Date.now()}-1`,
+          agent_name: 'Meera Iyer (Research)',
+          key: 'MARKET_OPPORTUNITY_REPORT',
+          category: 'RESEARCH',
+          value: {
+            demand_score: '78%',
+            identified_gap: 'Personalized real-time feedback with matching algorithms',
+            tam: '$1.8B annual market'
+          },
+          created_at: formatTime(4)
+        }
+      ]);
+    }, delay(2000));
+    simulationTimers.current.push(step1);
+
+    // Step 2: CTO & Marketing Deliveries
+    const step2 = setTimeout(() => {
+      sound.playTick();
+      setLogs((prev) => [
+        ...prev,
+        {
+          id: `log-${Date.now()}-4`,
+          agent_name: 'CTO',
+          message: 'Rohan (CTO) finalized Next.js 15 + FastAPI architecture with ChromaDB caching.',
+          level: 'SUCCESS',
+          timestamp: formatTime(6)
+        },
+        {
+          id: `log-${Date.now()}-5`,
+          agent_name: 'Marketing',
+          message: 'Isha (Marketing) finalized university ambassador playbook and referral loops.',
+          level: 'SUCCESS',
+          timestamp: formatTime(8)
+        },
+        {
+          id: `log-${Date.now()}-6`,
+          agent_name: 'Finance',
+          message: 'Kabir (Finance) flagged infrastructure burn rate vs seed runway target.',
+          level: 'CONFLICT',
+          timestamp: formatTime(10)
+        }
+      ]);
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === 'sim-t2'
+            ? { ...t, status: 'COMPLETED', result: 'Next.js 15, FastAPI, ChromaDB with <100ms p95 latency.' }
+            : t.id === 'sim-t3'
+            ? { ...t, status: 'COMPLETED', result: 'Ambassador network across 50 partner universities.' }
+            : t.id === 'sim-t4'
+            ? { ...t, status: 'RUNNING' }
+            : t
+        )
+      );
+
+      setAgents((prev) =>
+        prev.map((a) =>
+          a.role.includes('CTO')
+            ? { ...a, status: 'COMPLETED', current_task: 'Architecture spec delivered' }
+            : a.role.includes('Marketing')
+            ? { ...a, status: 'COMPLETED', current_task: 'GTM strategy delivered' }
+            : a.role.includes('Finance')
+            ? { ...a, status: 'WORKING', current_task: 'Financial modeling & unit economics' }
+            : a.role.includes('CEO')
+            ? { ...a, status: 'WORKING', current_task: 'Convening conflict resolution in Conference Room' }
+            : a
+        )
+      );
+    }, delay(4500));
+    simulationTimers.current.push(step2);
+
+    // Step 3: Conflict Arbitration in Conference Room
+    const step3 = setTimeout(() => {
+      sound.playTick();
+      setLogs((prev) => [
+        ...prev,
+        {
+          id: `log-${Date.now()}-7`,
+          agent_name: 'CEO',
+          message: 'CEO arbitrated Cloud Budget tradeoff: Hybrid serverless approved ($2,200/mo).',
+          level: 'SUCCESS',
+          timestamp: formatTime(12)
+        }
+      ]);
+
+      setDecisions((prev) => [
+        ...prev,
+        {
+          id: `dec-${Date.now()}`,
+          title: `Resource Optimization for ${goalToUse.slice(0, 30)}...`,
+          decision: 'Approved serverless embeddings with local caching, saving $2,800/mo while preserving sub-100ms latency.',
+          rationale: 'Balanced CTO performance benchmarks with Finance runway parameters.',
+          made_by: 'Arnav Sharma (CEO)',
+          created_at: formatTime(12)
+        }
+      ]);
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === 'sim-t4'
+            ? { ...t, status: 'COMPLETED', result: 'Monthly burn capped at $2,200; 18 months runway.' }
+            : t
+        )
+      );
+
+      setAgents((prev) =>
+        prev.map((a) => ({
+          ...a,
+          status: 'COMPLETED',
+          current_task: 'Goal execution completed successfully'
+        }))
+      );
+    }, delay(7000));
+    simulationTimers.current.push(step3);
+
+    // Step 4: Final Executive Deliverable
+    const step4 = setTimeout(() => {
+      sound.playSuccess();
+      const finalDoc = `# EXECUTIVE STRATEGY DELIVERABLE
+**Company:** AI ORG OS V1.0.0 - DEBUGGERS INC.
+**Objective:** ${goalToUse}
+
+## 1. Market Opportunity & Validation
+- **Demand Rating:** 78% validated across university student cohorts.
+- **Key Pain Point:** Lack of actionable resume-to-skill feedback before applying.
+- **Target TAM:** $1.8 Billion addressable market in early talent acquisition.
+
+## 2. Technical Architecture & Infrastructure
+- **Frontend:** Next.js 15 with Tailwind CSS and retro tactile interface.
+- **Backend:** FastAPI Python 3.11 with asynchronous worker pools.
+- **Vector & Data Store:** ChromaDB with PostgreSQL on Supabase.
+- **Performance SLA:** Sub-100ms vector matching latency via edge caching.
+
+## 3. Go-To-Market & Growth Loops
+- **University Ambassador Program:** 50 tier-1 engineering and design colleges in Phase 1.
+- **Target CAC:** $14.20 per verified active student profile.
+- **Employer Pipeline:** 120 hiring partners targeted for beta launch.
+
+## 4. Financial Economics & Runway
+- **Monthly Cloud Hosting:** $2,200/mo under hybrid serverless model.
+- **Gross Margin:** 82%.
+- **Projected Runway:** 18 months sustained operations.
+
+---
+*Signed off by CEO Arnav Sharma & Executive Squad.*`;
+
+      setCompany((prev) => ({
+        ...prev,
+        status: 'COMPLETED',
+        final_report: finalDoc
+      }));
+
+      setMemories((prev) => [
+        ...prev,
+        {
+          id: `mem-final-${Date.now()}`,
+          agent_name: 'Arnav Sharma (CEO)',
+          key: 'FINAL_EXECUTIVE_REPORT',
+          category: 'DECISION',
+          value: finalDoc,
+          created_at: formatTime(14)
+        }
+      ]);
+
+      setLogs((prev) => [
+        ...prev,
+        {
+          id: `log-${Date.now()}-8`,
+          agent_name: 'System',
+          message: '🏆 Organization pipeline execution COMPLETED. Final report ready.',
+          level: 'SUCCESS',
+          timestamp: formatTime(14)
+        }
+      ]);
+
+      setIsRunning(false);
+    }, delay(9500));
+    simulationTimers.current.push(step4);
+  };
+
+  // Start Organization Workflow (Backend + Fallback Simulation)
   const handleStartOrganization = async (customPrompt?: string) => {
     const goalToUse = customPrompt || goalInput;
     if (!goalToUse.trim() || isRunning) return;
-    setIsRunning(true);
-    setCompany(null);
-    setTasks([]);
-    setMemories([]);
-    setDecisions([]);
-    setLogs([]);
+
+    sound.playExecute();
 
     try {
-      const createRes = await fetch(`${API_BASE}/create`, {
+      const res = await fetch(`${apiBase}/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: 'AI Organization MVP',
+          name: 'AI ORG OS V1.0.0 - DEBUGGERS INC.',
           goal: goalToUse.trim()
         })
-      }).then((r) => r.json());
+      });
 
-      const companyId = createRes.company_id;
-      await fetchAllData(companyId);
+      if (!res.ok) throw new Error('Backend offline');
+
+      const createData = await res.json();
+      const companyId = createData.company_id;
+
+      // Connect SSE
       connectSSE(companyId);
-      await fetch(`${API_BASE}/${companyId}/run`, { method: 'POST' });
-    } catch (e) {
-      console.error('Failed to start organization:', e);
-      setIsRunning(false);
+
+      // Trigger backend pipeline run
+      await fetch(`${apiBase}/${companyId}/run`, { method: 'POST' });
+    } catch (err) {
+      console.log('Running interactive fallback simulation engine:', err);
+      runSimulatedPipeline(goalToUse);
     }
   };
 
   return (
-    <main className="min-h-screen bg-[#f4ece1] p-3 md:p-6 font-mono selection:bg-[#2c2621] selection:text-[#f4ece1] flex items-center justify-center">
-      {/* WINDOW FRAME CONTAINER */}
-      <div className="w-full max-w-7xl bg-[#ebdcd0] border-4 border-[#2c2621] rounded-2xl shadow-2xl overflow-hidden flex flex-col space-y-3 p-3">
+    <main className="min-h-screen bg-[#f4ece1] p-2 sm:p-4 md:p-6 font-mono selection:bg-[#2c2621] selection:text-[#f4ece1] flex items-center justify-center">
+      {/* RETRO WINDOW FRAME CONTAINER (matching screenshot) */}
+      <div className="w-full max-w-6xl bg-[#ebdcd0] border-4 border-[#2c2621] rounded-2xl shadow-2xl overflow-hidden flex flex-col space-y-2.5 p-2.5 sm:p-3">
         {/* 1. TOP WINDOW TITLEBAR */}
-        <div className="flex items-center justify-between border-b-4 border-[#2c2621] pb-2 px-2">
-          {/* Traffic Dots & OS Title */}
-          <div className="flex items-center space-x-3">
+        <div className="flex items-center justify-between border-b-4 border-[#2c2621] pb-2 px-1">
+          {/* Traffic Light Dots & OS Title */}
+          <div className="flex items-center space-x-2.5">
             <div className="flex space-x-1.5">
-              <div className="w-3.5 h-3.5 rounded-full bg-red-500 border border-[#2c2621]" />
-              <div className="w-3.5 h-3.5 rounded-full bg-amber-400 border border-[#2c2621]" />
-              <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 border border-[#2c2621]" />
+              <div
+                onClick={() => {
+                  sound.playClick();
+                  handleResetOrg();
+                }}
+                className="w-3.5 h-3.5 rounded-full bg-red-500 border-2 border-[#2c2621] cursor-pointer hover:opacity-80"
+                title="Reset Organization"
+              />
+              <div
+                onClick={() => {
+                  sound.playClick();
+                  setIsPaused(!isPaused);
+                }}
+                className="w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-[#2c2621] cursor-pointer hover:opacity-80"
+                title="Pause / Resume"
+              />
+              <div
+                onClick={() => {
+                  sound.playClick();
+                  setIsStatsOpen(true);
+                }}
+                className="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[#2c2621] cursor-pointer hover:opacity-80"
+                title="View Performance Stats"
+              />
             </div>
-            <div className="text-xs font-black tracking-wider text-[#2c2621] uppercase">
-              AI ORG OS <span className="text-[#8c7b70] text-[10px] font-bold">v1.0.0 - DEBUGGERS INC.</span>
+            <div className="text-[11px] sm:text-xs font-black tracking-wider text-[#2c2621] uppercase">
+              AI ORG OS <span className="text-[#8c7b70] text-[9px] sm:text-[10px] font-bold">V1.0.0 - DEBUGGERS INC.</span>
             </div>
           </div>
 
-          {/* Right Action Controls */}
-          <div className="flex items-center space-x-2">
+          {/* Right Action Controls (matching screenshot) */}
+          <div className="flex items-center space-x-1.5">
             <button
-              onClick={() => setViewMode(viewMode === 'PIXEL_OFFICE' ? 'GRAPH' : 'PIXEL_OFFICE')}
-              className="px-2.5 py-1 bg-[#f4ece1] hover:bg-[#e8dbc9] border-2 border-[#2c2621] rounded text-[10px] font-bold flex items-center gap-1.5 shadow"
+              onClick={() => {
+                sound.playClick();
+                setViewMode(viewMode === 'PIXEL_OFFICE' ? 'GRAPH' : 'PIXEL_OFFICE');
+              }}
+              className="px-2.5 py-1 bg-[#f4ece1] hover:bg-[#e4d3c3] border-2 border-[#2c2621] rounded text-[10px] font-black flex items-center gap-1.5 shadow cursor-pointer transition"
             >
-              {viewMode === 'PIXEL_OFFICE' ? <GitFork className="w-3 h-3" /> : <Gamepad2 className="w-3 h-3" />}
-              <span>{viewMode === 'PIXEL_OFFICE' ? 'Graph View' : 'Pixel Office'}</span>
+              {viewMode === 'PIXEL_OFFICE' ? <GitFork className="w-3 h-3 text-[#2c2621]" /> : <Gamepad2 className="w-3 h-3 text-[#2c2621]" />}
+              <span className="text-[#2c2621]">{viewMode === 'PIXEL_OFFICE' ? 'Graph View' : 'Pixel Office'}</span>
             </button>
-            <button className="p-1 bg-[#f4ece1] hover:bg-[#e8dbc9] border-2 border-[#2c2621] rounded text-[#2c2621] shadow">
+
+            <button
+              onClick={() => {
+                sound.playClick();
+                setIsStatsOpen(true);
+              }}
+              className="p-1 bg-[#f4ece1] hover:bg-[#e4d3c3] border-2 border-[#2c2621] rounded text-[#2c2621] shadow cursor-pointer transition"
+              title="Analytics & Stats"
+            >
               <BarChart3 className="w-3.5 h-3.5" />
             </button>
-            <button className="p-1 bg-[#f4ece1] hover:bg-[#e8dbc9] border-2 border-[#2c2621] rounded text-[#2c2621] shadow">
+
+            <button
+              onClick={() => {
+                sound.playClick();
+                setIsSettingsOpen(true);
+              }}
+              className="p-1 bg-[#f4ece1] hover:bg-[#e4d3c3] border-2 border-[#2c2621] rounded text-[#2c2621] shadow cursor-pointer transition"
+              title="Settings"
+            >
               <Settings className="w-3.5 h-3.5" />
             </button>
-            <button className="p-1 bg-[#f4ece1] hover:bg-[#e8dbc9] border-2 border-[#2c2621] rounded text-[#2c2621] shadow">
+
+            <button
+              onClick={() => {
+                sound.playClick();
+                handleResetOrg();
+              }}
+              className="p-1 bg-[#f4ece1] hover:bg-[#e4d3c3] border-2 border-[#2c2621] rounded text-[#2c2621] shadow cursor-pointer transition"
+              title="Reset System"
+            >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -188,17 +581,19 @@ export default function Dashboard() {
 
         {/* 2. MAIN WORKSPACE CONTENT */}
         {viewMode === 'PIXEL_OFFICE' ? (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {/* GRID: 2D PIXEL OFFICE MAP + COMMAND CENTER */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5">
               <div className="lg:col-span-7">
                 <PixelOffice
                   agents={agents}
                   onSelectAgent={(agent) => setSelectedAgent(agent)}
                   selectedAgentId={selectedAgent?.id}
-                  companyStatus={company?.status || 'RUNNING'}
+                  companyStatus={company.status}
                   hasDecision={decisions.length > 0}
-                  hasReport={!!company?.final_report}
+                  hasReport={!!company.final_report}
+                  onOpenDiagram={() => setIsDiagramOpen(true)}
+                  onOpenMemoryCore={() => setIsMemoryCoreOpen(true)}
                 />
               </div>
 
@@ -208,9 +603,14 @@ export default function Dashboard() {
                   memories={memories}
                   tasks={tasks}
                   decisions={decisions}
-                  reportContent={company?.final_report || null}
-                  companyGoal={company?.goal || goalInput}
+                  agents={agents}
+                  reportContent={company.final_report || null}
+                  companyGoal={company.goal || goalInput}
+                  isPaused={isPaused}
+                  onTogglePause={() => setIsPaused(!isPaused)}
+                  onClearLogs={() => setLogs([])}
                   onSendPrompt={(prompt) => handleStartOrganization(prompt)}
+                  onSelectAgent={(agent) => setSelectedAgent(agent)}
                 />
               </div>
             </div>
@@ -223,9 +623,9 @@ export default function Dashboard() {
             />
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* TOP TAB BAR FOR NODE GRAPH */}
-            <div className="flex border-b-2 border-[#2c2621] gap-2 overflow-x-auto pb-1">
+            <div className="flex border-b-2 border-[#2c2621] gap-1.5 overflow-x-auto pb-1">
               {[
                 { id: 'GRAPH', label: 'Organization Graph', icon: Cpu },
                 { id: 'ACTIVITY', label: 'Activity Feed', icon: Activity },
@@ -238,14 +638,17 @@ export default function Dashboard() {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-t text-xs font-extrabold border-2 transition ${
+                    onClick={() => {
+                      sound.playClick();
+                      setActiveTab(tab.id as any);
+                    }}
+                    className={`flex items-center space-x-1.5 px-3 py-1 rounded-t text-[10px] font-black border-2 transition cursor-pointer ${
                       isActive
                         ? 'bg-[#2c2621] text-[#f4ece1] border-[#2c2621]'
                         : 'bg-[#f4ece1] text-[#2c2621] border-[#8c7b70] hover:bg-[#e4d3c3]'
                     }`}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon className="w-3 h-3" />
                     <span>{tab.label}</span>
                   </button>
                 );
@@ -257,36 +660,70 @@ export default function Dashboard() {
                 agents={agents}
                 onSelectAgent={(agent) => setSelectedAgent(agent)}
                 selectedAgentId={selectedAgent?.id}
-                companyStatus={company?.status || 'RUNNING'}
+                companyStatus={company.status}
                 hasDecision={decisions.length > 0}
-                hasReport={!!company?.final_report}
+                hasReport={!!company.final_report}
               />
             )}
 
             {activeTab === 'ACTIVITY' && <ActivityFeed logs={logs} />}
 
             {activeTab === 'MEMORY' && (
-              <CompanyMemoryView memories={memories} companyGoal={company?.goal || goalInput} />
+              <CompanyMemoryView memories={memories} companyGoal={company.goal || goalInput} />
             )}
 
             {activeTab === 'CONFLICTS' && <ConflictsView decisions={decisions} />}
 
             {activeTab === 'REPORT' && (
               <FinalReportView
-                reportContent={company?.final_report || null}
-                companyGoal={company?.goal || goalInput}
+                reportContent={company.final_report || null}
+                companyGoal={company.goal || goalInput}
               />
             )}
           </div>
         )}
       </div>
 
-      {/* AGENT DETAILS DRAWER */}
+      {/* RETRO AGENT DETAILS DRAWER */}
       <AgentDrawer
         agent={selectedAgent}
         onClose={() => setSelectedAgent(null)}
         tasks={tasks}
         memories={memories}
+      />
+
+      {/* DIAGRAM BOARD MODAL */}
+      <DiagramBoardModal
+        isOpen={isDiagramOpen}
+        onClose={() => setIsDiagramOpen(false)}
+      />
+
+      {/* MEMORY CORE INSPECTOR MODAL */}
+      <MemoryCoreModal
+        isOpen={isMemoryCoreOpen}
+        onClose={() => setIsMemoryCoreOpen(false)}
+        memories={memories}
+      />
+
+      {/* STATS & PERFORMANCE ANALYTICS MODAL */}
+      <StatsModal
+        isOpen={isStatsOpen}
+        onClose={() => setIsStatsOpen(false)}
+        agents={agents}
+        tasks={tasks}
+      />
+
+      {/* OS SETTINGS MODAL */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        apiBase={apiBase}
+        setApiBase={setApiBase}
+        simulationSpeed={simulationSpeed}
+        setSimulationSpeed={setSimulationSpeed}
+        soundEnabled={soundEnabled}
+        setSoundEnabled={setSoundEnabled}
+        onResetOrg={handleResetOrg}
       />
     </main>
   );

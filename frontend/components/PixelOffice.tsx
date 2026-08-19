@@ -2,6 +2,10 @@
 
 import React from 'react';
 import { Agent } from '@/types';
+import { sound } from '@/utils/sound';
+import PixelCharacter, { CharacterType } from './PixelCharacter';
+import PixelDesk from './PixelDesk';
+import { Maximize2 } from 'lucide-react';
 
 interface PixelOfficeProps {
   agents: Agent[];
@@ -10,6 +14,8 @@ interface PixelOfficeProps {
   companyStatus: string;
   hasDecision: boolean;
   hasReport: boolean;
+  onOpenDiagram?: () => void;
+  onOpenMemoryCore?: () => void;
 }
 
 export default function PixelOffice({
@@ -17,203 +23,307 @@ export default function PixelOffice({
   onSelectAgent,
   selectedAgentId,
   companyStatus,
-  hasDecision
+  hasDecision,
+  onOpenDiagram,
+  onOpenMemoryCore
 }: PixelOfficeProps) {
-  const getAgent = (roleSubstring: string) =>
-    agents.find((a) => a.name.toLowerCase().includes(roleSubstring.toLowerCase()));
+  const getAgent = (roleOrName: string) =>
+    agents.find(
+      (a) =>
+        a.name.toLowerCase().includes(roleOrName.toLowerCase()) ||
+        a.role.toLowerCase().includes(roleOrName.toLowerCase())
+    );
 
-  const ceo = getAgent('CEO') || { name: 'Arnav Sharma', role: 'CEO', status: 'WAITING' };
-  const research = getAgent('Research') || { name: 'Meera Iyer', role: 'Research', status: 'WAITING' };
-  const cto = getAgent('CTO') || { name: 'Rohan Verma', role: 'CTO', status: 'WAITING' };
-  const marketing = getAgent('Marketing') || { name: 'Isha Malhotra', role: 'Marketing', status: 'WAITING' };
-  const dev = getAgent('Development') || getAgent('Finance') || { name: 'Kabir Singh', role: 'Development', status: 'WAITING' };
-
-  // Calculate pixel sprite coordinates on floor
-  const getAgentPos = (type: string) => {
-    // If in conflict resolution or decision, move to conference room
-    if (hasDecision || companyStatus === 'COMPLETED') {
-      if (type === 'ceo') return { x: 42, y: 18 };
-      if (type === 'research') return { x: 36, y: 22 };
-      if (type === 'cto') return { x: 48, y: 22 };
-      if (type === 'marketing') return { x: 38, y: 28 };
-      if (type === 'dev') return { x: 46, y: 28 };
-    }
-
-    switch (type) {
-      case 'ceo':
-        return { x: 9, y: 22 };
-      case 'research':
-        return { x: 7, y: 52 };
-      case 'cto':
-        return { x: 22, y: 52 };
-      case 'marketing':
-        return { x: 37, y: 52 };
-      case 'dev':
-        return { x: 62, y: 56 };
-      default:
-        return { x: 50, y: 50 };
-    }
+  const ceo: Agent = getAgent('Arnav') || getAgent('CEO') || {
+    id: 'agent-ceo',
+    name: 'Arnav Sharma',
+    role: 'CEO',
+    objective: 'Lead organization and orchestrate strategy',
+    status: 'WAITING',
+    current_task: 'Review budget conflict',
+    capabilities: [],
+    dependencies: []
   };
 
-  const spriteList = [
-    { type: 'ceo', name: 'Arnav Sharma', role: 'CEO', avatar: '👨‍💼', color: 'bg-amber-800' },
-    { type: 'research', name: 'Meera Iyer', role: 'RESEARCH', avatar: '👩‍🔬', color: 'bg-cyan-800' },
-    { type: 'cto', name: 'Rohan Verma', role: 'CTO', avatar: '👨‍💻', color: 'bg-emerald-800' },
-    { type: 'marketing', name: 'Isha Malhotra', role: 'MARKETING', avatar: '👩‍💼', color: 'bg-purple-800' },
-    { type: 'dev', name: 'Kabir Singh', role: 'FINANCE / DEV', avatar: '👨‍🔧', color: 'bg-amber-900' }
+  const research: Agent = getAgent('Meera') || getAgent('Research') || {
+    id: 'agent-research',
+    name: 'Meera Iyer',
+    role: 'Research',
+    objective: 'Market Intel',
+    status: 'COMPLETED',
+    current_task: 'Market research done',
+    capabilities: [],
+    dependencies: []
+  };
+
+  const cto: Agent = getAgent('Rohan') || getAgent('CTO') || {
+    id: 'agent-cto',
+    name: 'Rohan Verma',
+    role: 'CTO',
+    objective: 'Tech Architecture',
+    status: 'WAITING',
+    current_task: 'Tech spec drafted',
+    capabilities: [],
+    dependencies: []
+  };
+
+  const marketing: Agent = getAgent('Isha') || getAgent('Marketing') || {
+    id: 'agent-marketing',
+    name: 'Isha Malhotra',
+    role: 'Marketing',
+    objective: 'Growth & GTM',
+    status: 'WORKING',
+    current_task: 'Campus playbook',
+    capabilities: [],
+    dependencies: []
+  };
+
+  const finance: Agent = getAgent('Kabir') || getAgent('Finance') || getAgent('Dev') || {
+    id: 'agent-finance',
+    name: 'Kabir Singh',
+    role: 'Finance',
+    objective: 'Unit Economics',
+    status: 'COMPLETED',
+    current_task: 'Unit economics finalized',
+    capabilities: [],
+    dependencies: []
+  };
+
+  // Agent sprite configurations with coordinates matching the screenshot
+  const characterSprites: {
+    id: string;
+    agent: Agent;
+    type: CharacterType;
+    name: string;
+    normalPos: { x: number; y: number };
+    meetingPos: { x: number; y: number };
+  }[] = [
+    {
+      id: 'ceo',
+      agent: ceo,
+      type: 'arnav',
+      name: 'Arnav',
+      normalPos: { x: 10, y: 22 }, // In CEO Office
+      meetingPos: { x: 38, y: 16 }
+    },
+    {
+      id: 'research',
+      agent: research,
+      type: 'meera',
+      name: 'Meera',
+      normalPos: { x: 9.5, y: 49 }, // Row 1 Desk 1 (Top Left)
+      meetingPos: { x: 44, y: 16 }
+    },
+    {
+      id: 'cto',
+      agent: cto,
+      type: 'rohan',
+      name: 'Rohan',
+      normalPos: { x: 25.5, y: 49 }, // Row 1 Desk 3 (Blond character)
+      meetingPos: { x: 50, y: 16 }
+    },
+    {
+      id: 'marketing',
+      agent: marketing,
+      type: 'isha',
+      name: 'Isha',
+      normalPos: { x: 37, y: 49 }, // Row 1 Desk 4 (White shirt)
+      meetingPos: { x: 40, y: 28 }
+    },
+    {
+      id: 'finance',
+      agent: finance,
+      type: 'kabir',
+      name: 'Kabir',
+      normalPos: { x: 53, y: 55 }, // Standing in aisle (Dark skin / black shirt)
+      meetingPos: { x: 48, y: 28 }
+    }
   ];
 
   return (
     <div className="w-full h-[540px] bg-[#d5ceb9] border-4 border-[#2c2621] rounded-lg relative overflow-hidden font-mono shadow-2xl select-none">
-      {/* 1. SAGE GREEN TILED FLOOR GRID */}
+      {/* 1. SAGE GREEN TILED FLOOR GRID WITH INTERSECTION DOTS (matching reference image) */}
       <div
-        className="absolute inset-0 bg-[#5f8b65]"
+        className="absolute inset-0 bg-[#598460]"
         style={{
           backgroundImage: `
-            linear-gradient(to right, rgba(0,0,0,0.15) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(0,0,0,0.15) 1px, transparent 1px)
+            radial-gradient(circle at 1px 1px, rgba(0,0,0,0.3) 1.5px, transparent 0),
+            linear-gradient(to right, rgba(0,0,0,0.18) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(0,0,0,0.18) 1px, transparent 1px)
           `,
           backgroundSize: '36px 36px'
         }}
       />
 
-      {/* 2. OFFICE WALL STRUCTURES */}
+      {/* 2. TOP ROOMS LAYER */}
 
-      {/* Top Left: CEO Office Wall */}
-      <div className="absolute top-0 left-0 w-[24%] h-[40%] bg-[#d2c7b5] border-r-4 border-b-4 border-[#2c2621] p-2">
-        <div className="text-[9px] font-extrabold text-[#2c2621] tracking-wider border-b-2 border-[#2c2621] pb-1 flex justify-between">
+      {/* Top Left: CEO Office */}
+      <div className="absolute top-0 left-0 w-[20%] h-[37%] bg-[#d2c7b5] border-r-4 border-b-4 border-[#2c2621] p-1.5 flex flex-col">
+        <div className="text-[8px] font-black text-[#2c2621] tracking-wider border-b-2 border-[#2c2621] pb-0.5 flex justify-between items-center">
           <span>CEO OFFICE</span>
-          <span>📅</span>
+          <span className="text-[7px] text-[#4a3e37]">▼</span>
         </div>
         {/* CEO Desk */}
-        <div className="absolute top-12 left-5 w-24 h-14 bg-[#9a673b] border-2 border-[#2c2621] rounded flex items-center justify-center shadow">
-          <div className="w-10 h-6 bg-[#2a2a2a] rounded flex items-center justify-center text-[9px] text-emerald-400">
-            💻
-          </div>
+        <div className="relative flex-1 flex items-center justify-center">
+          <PixelDesk monitorScreenColor="cyan" accessories="papers" hasChair={true} />
         </div>
       </div>
 
-      {/* Top Center: Conference Room Wall */}
-      <div className="absolute top-0 left-[24%] w-[48%] h-[40%] bg-[#d2c7b5] border-r-4 border-b-4 border-[#2c2621] p-2">
-        <div className="text-[9px] font-extrabold text-[#2c2621] tracking-wider border-b-2 border-[#2c2621] pb-1">
+      {/* Top Center: Conference Room */}
+      <div className="absolute top-0 left-[20%] w-[45%] h-[37%] bg-[#d2c7b5] border-r-4 border-b-4 border-[#2c2621] p-1.5">
+        <div className="text-[8px] font-black text-[#2c2621] tracking-wider border-b-2 border-[#2c2621] pb-0.5">
           CONFERENCE ROOM
         </div>
         {/* Boardroom Table */}
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-56 h-16 bg-[#9a673b] border-2 border-[#2c2621] rounded-xl flex flex-col items-center justify-center shadow">
-          <div className="flex space-x-2 mb-1">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="w-5 h-3 bg-[#6b306b] border border-[#2c2621] rounded-sm" />
-            ))}
+        <div className="relative flex items-center justify-center h-[82%]">
+          <div className="w-56 h-15 bg-[#9a673b] border-2 border-[#2c2621] rounded-2xl flex flex-col items-center justify-center shadow-md">
+            <div className="flex space-x-3 -mt-1 mb-1">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="w-5 h-3 bg-[#6b306b] border border-[#2c2621] rounded-xs shadow-xs" />
+              ))}
+            </div>
+            <span className="text-[7px] font-black text-[#f5ebe0] tracking-widest">BOARDROOM TABLE</span>
           </div>
-          <span className="text-[8px] font-bold text-[#f5ebe0]">BOARDROOM TABLE</span>
         </div>
       </div>
 
-      {/* Top Right: Quiet Room Wall */}
-      <div className="absolute top-0 right-0 w-[28%] h-[40%] bg-[#d2c7b5] border-b-4 border-[#2c2621] p-2">
-        <div className="text-[9px] font-extrabold text-[#2c2621] tracking-wider border-b-2 border-[#2c2621] pb-1">
+      {/* Top Right: Quiet Room */}
+      <div className="absolute top-0 right-0 w-[35%] h-[37%] bg-[#d2c7b5] border-b-4 border-[#2c2621] p-1.5">
+        <div className="text-[8px] font-black text-[#2c2621] tracking-wider border-b-2 border-[#2c2621] pb-0.5">
           QUIET ROOM
         </div>
-        <div className="flex justify-around mt-6">
-          <div className="w-12 h-10 bg-[#9a673b] border border-[#2c2621] rounded flex items-center justify-center text-[9px]">💻</div>
-          <div className="w-12 h-10 bg-[#9a673b] border border-[#2c2621] rounded flex items-center justify-center text-[9px]">💻</div>
+        <div className="flex justify-around items-center h-[82%] px-1">
+          <PixelDesk monitorScreenColor="emerald" accessories="mug" />
+          <PixelDesk monitorScreenColor="blue" accessories="none" />
         </div>
       </div>
 
-      {/* 3. MAIN WORKSTATION DESK GRID (Center/Bottom Floor) */}
-      <div className="absolute top-[44%] left-[4%] w-[68%] h-[50%] grid grid-cols-4 gap-4">
+      {/* 3. MAIN OPEN FLOOR DESKS (Row 1 & Row 2 matching the user's image) */}
+      <div className="absolute top-[40%] left-[2%] w-[68%] h-[56%] flex flex-col justify-between py-1 pointer-events-none">
         {/* Row 1 Desks */}
-        {[1, 2, 3, 4].map((desk) => (
-          <div key={`r1-${desk}`} className="w-16 h-14 bg-[#9a673b] border-2 border-[#2c2621] rounded p-1 flex flex-col items-center justify-between shadow">
-            <div className="w-8 h-5 bg-[#222] border border-[#111] rounded flex items-center justify-center text-[8px] text-cyan-400">💻</div>
-            <div className="w-6 h-2 bg-[#2c2621] rounded-full" />
-          </div>
-        ))}
+        <div className="grid grid-cols-5 gap-2">
+          <PixelDesk monitorScreenColor="cyan" accessories="mug" />
+          <PixelDesk monitorScreenColor="black" accessories="none" />
+          <PixelDesk monitorScreenColor="amber" accessories="mug" />
+          <PixelDesk monitorScreenColor="blue" accessories="papers" />
+          <PixelDesk monitorScreenColor="emerald" accessories="mug" />
+        </div>
+
         {/* Row 2 Desks */}
-        {[1, 2, 3, 4].map((desk) => (
-          <div key={`r2-${desk}`} className="w-16 h-14 bg-[#9a673b] border-2 border-[#2c2621] rounded p-1 flex flex-col items-center justify-between shadow mt-2">
-            <div className="w-8 h-5 bg-[#222] border border-[#111] rounded flex items-center justify-center text-[8px] text-amber-400">💻</div>
-            <div className="w-6 h-2 bg-[#2c2621] rounded-full" />
-          </div>
-        ))}
+        <div className="grid grid-cols-5 gap-2">
+          <PixelDesk monitorScreenColor="black" accessories="none" />
+          <PixelDesk monitorScreenColor="black" accessories="mug" />
+          <PixelDesk monitorScreenColor="blue" accessories="papers" />
+          <PixelDesk monitorScreenColor="black" accessories="none" />
+          <PixelDesk monitorScreenColor="cyan" accessories="mug" />
+        </div>
+      </div>
+
+      {/* Secondary Floor Decorative Character (Row 2 Desk 3 Employee) */}
+      <div className="absolute left-[34%] top-[78%] -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
+        <PixelCharacter type="employee1" size={48} />
       </div>
 
       {/* 4. MEMORY CORE SERVER ROOM (Bottom-Right) */}
-      <div className="absolute bottom-2 right-2 w-[26%] h-[54%] bg-[#7ca382] border-4 border-[#2c2621] rounded-lg p-2 flex flex-col justify-between shadow-xl">
-        <div className="bg-[#48704e] border-2 border-[#2c2621] px-2 py-1 rounded text-center">
-          <span className="text-[10px] font-extrabold text-[#f4ece1] uppercase tracking-widest block">
+      <div
+        onClick={onOpenMemoryCore}
+        className="absolute bottom-2 right-2 w-[27%] h-[58%] bg-[#7ca382] border-4 border-[#2c2621] rounded-lg p-1.5 flex flex-col justify-between shadow-xl cursor-pointer hover:brightness-105 transition z-30"
+      >
+        {/* Header */}
+        <div className="bg-[#48704e] border-2 border-[#2c2621] py-0.5 rounded text-center">
+          <span className="text-[9px] font-black text-[#f4ece1] uppercase tracking-widest block">
             MEMORY CORE
           </span>
         </div>
 
         {/* Server Racks */}
-        <div className="grid grid-cols-2 gap-1.5 my-1">
-          <div className="bg-[#1e2e21] border-2 border-[#2c2621] p-1 rounded flex flex-col justify-between h-16 shadow">
-            <div className="text-[7px] text-emerald-400 font-bold">RACK #01</div>
-            <div className="w-full h-1 bg-emerald-400 animate-pulse rounded" />
-            <div className="w-full h-1 bg-emerald-500 rounded" />
-            <div className="w-full h-1 bg-emerald-400 rounded" />
+        <div className="grid grid-cols-2 gap-1 my-1">
+          <div className="bg-[#1e2e21] border-2 border-[#2c2621] p-1 rounded flex flex-col justify-between h-20 shadow">
+            <div className="text-[7px] text-emerald-400 font-bold uppercase">RACK #01</div>
+            <div className="space-y-1">
+              <div className="w-full h-1 bg-emerald-400 animate-pulse rounded" />
+              <div className="w-full h-1 bg-emerald-400 rounded" />
+              <div className="w-full h-1 bg-emerald-500 rounded" />
+              <div className="w-full h-1 bg-emerald-400 rounded" />
+            </div>
           </div>
-          <div className="bg-[#1e2e21] border-2 border-[#2c2621] p-1 rounded flex flex-col justify-between h-16 shadow">
-            <div className="text-[7px] text-emerald-400 font-bold">RACK #02</div>
-            <div className="w-full h-1 bg-emerald-400 rounded" />
-            <div className="w-full h-1 bg-emerald-500 animate-pulse rounded" />
-            <div className="w-full h-1 bg-emerald-400 rounded" />
+
+          <div className="bg-[#1e2e21] border-2 border-[#2c2621] p-1 rounded flex flex-col justify-between h-20 shadow">
+            <div className="text-[7px] text-emerald-400 font-bold uppercase">RACK #02</div>
+            <div className="space-y-1">
+              <div className="w-full h-1 bg-emerald-400 rounded" />
+              <div className="w-full h-1 bg-emerald-500 animate-pulse rounded" />
+              <div className="w-full h-1 bg-emerald-400 rounded" />
+              <div className="w-full h-1 bg-emerald-400 rounded" />
+            </div>
           </div>
         </div>
 
-        {/* Diagram Board & Lounge */}
-        <div className="bg-[#f5ebe0] border-2 border-[#2c2621] rounded p-1 text-[8px] font-bold text-[#2c2621] flex justify-between items-center">
+        {/* Diagram Board Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            sound.playClick();
+            if (onOpenDiagram) onOpenDiagram();
+          }}
+          className="bg-[#f5ebe0] hover:bg-[#ebdcd0] border-2 border-[#2c2621] rounded p-1 text-[8px] font-black text-[#2c2621] flex justify-between items-center transition cursor-pointer shadow"
+        >
           <span>📋 DIAGRAM BOARD</span>
-          <span>🛋️</span>
-        </div>
+          <Maximize2 className="w-2.5 h-2.5 text-[#2c2621]" />
+        </button>
       </div>
 
-      {/* 5. CHARACTER PIXEL SPRITES */}
-      {spriteList.map(({ type, name, role, avatar }) => {
-        const pos = getAgentPos(type);
-        const liveAgent = agents.find((a) => a.name.toLowerCase().includes(role.toLowerCase()) || name.toLowerCase().includes(a.name.toLowerCase()));
-        const isWorking = liveAgent?.status === 'WORKING';
-        const isSelected = liveAgent && selectedAgentId === liveAgent.id;
+      {/* 5. INTERACTIVE PIXEL ART HUMAN CHARACTERS */}
+      {characterSprites.map(({ id, agent, type, name, normalPos, meetingPos }) => {
+        const isMeeting = hasDecision && companyStatus === 'IN_PROGRESS';
+        const pos = isMeeting ? meetingPos : normalPos;
+        const isSelected = selectedAgentId === agent.id;
+        const isWorking = agent.status === 'WORKING';
 
         return (
           <div
-            key={type}
-            onClick={() => liveAgent && onSelectAgent(liveAgent)}
+            key={id}
+            onClick={() => {
+              sound.playClick();
+              onSelectAgent(agent);
+            }}
             style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
             className={`absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-700 cursor-pointer z-30 group ${
-              isSelected ? 'scale-125 ring-2 ring-amber-400 rounded-full' : 'hover:scale-110'
+              isSelected ? 'scale-115 z-40' : 'hover:scale-105'
             }`}
           >
-            {/* Speech Bubble */}
-            {liveAgent?.current_task && (
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#2c2621] text-[#f4ece1] text-[8px] font-bold px-1.5 py-0.5 rounded border border-[#f4ece1] shadow whitespace-nowrap z-40 animate-bounce">
-                {isWorking ? `⚡ ${liveAgent.current_task.slice(0, 16)}...` : '✓ Done'}
+            {/* Speech / Task Bubble */}
+            {agent.current_task && (
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#2c2621] text-[#f4ece1] text-[7px] font-black px-1.5 py-0.5 rounded border border-[#f4ece1] shadow whitespace-nowrap z-40 animate-bounce">
+                {isWorking ? `⚡ ${agent.current_task.slice(0, 14)}...` : '✓ Ready'}
               </div>
             )}
 
-            {/* Sprite Body */}
-            <div className="w-9 h-9 rounded-full bg-[#f4ece1] border-2 border-[#2c2621] shadow-lg flex items-center justify-center relative">
-              <span className="text-base">{avatar}</span>
-              {isWorking && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 border border-[#2c2621] rounded-full animate-ping" />
-              )}
-            </div>
+            {/* Selection Glow Indicator */}
+            {isSelected && (
+              <div className="absolute -inset-1 rounded-full bg-amber-400/40 animate-ping -z-10" />
+            )}
 
-            {/* Name Tag */}
-            <div className="mt-0.5 bg-[#2c2621] text-[#f4ece1] px-1 rounded text-center text-[7px] font-bold shadow truncate max-w-[60px]">
-              {name.split(' ')[0]}
-            </div>
+            {/* Render Full Pixel Art Human Sprite */}
+            <PixelCharacter
+              type={type}
+              isWorking={isWorking}
+              name={name}
+              size={52}
+            />
           </div>
         );
       })}
 
       {/* 6. BOTTOM STATUS PILL OVERMAP */}
-      <div className="absolute bottom-2 left-2 bg-[#f5ebe0] border-2 border-[#2c2621] px-3 py-1 rounded-md shadow-lg flex items-center space-x-1.5 z-20">
-        <span className="text-[10px] font-black text-[#2c2621] uppercase">COMPANY STATUS:</span>
-        <span className="inline-flex items-center text-[10px] font-bold text-emerald-700 gap-1">
+      <div className="absolute bottom-2 left-2 bg-[#f5ebe0] border-2 border-[#2c2621] px-2.5 py-0.5 rounded shadow-lg flex items-center space-x-1.5 z-20">
+        <span className="text-[9px] font-black text-[#2c2621] uppercase">COMPANY STATUS:</span>
+        <span className="inline-flex items-center text-[9px] font-black text-emerald-800 gap-1">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          {companyStatus === 'IN_PROGRESS' ? 'RUNNING' : companyStatus}
+          {companyStatus === 'IN_PROGRESS' || companyStatus === 'RUNNING'
+            ? 'RUNNING'
+            : companyStatus}
         </span>
       </div>
     </div>

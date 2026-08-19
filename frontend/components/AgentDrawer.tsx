@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { Agent, Task, Memory } from '@/types';
-import { X, Bot, CheckCircle2, Clock, Cpu, ShieldCheck, ListTodo, Database, MessageSquare } from 'lucide-react';
+import { X, CheckCircle2, Clock, Cpu, ShieldCheck, ListTodo, Database } from 'lucide-react';
+import { sound } from '@/utils/sound';
 
 interface AgentDrawerProps {
   agent: Agent | null;
@@ -15,94 +16,104 @@ export default function AgentDrawer({ agent, onClose, tasks, memories }: AgentDr
   if (!agent) return null;
 
   const agentTasks = tasks.filter(
-    (t) => t.assigned_agent.toLowerCase().includes(agent.name.toLowerCase()) ||
-           agent.name.toLowerCase().includes(t.assigned_agent.toLowerCase())
+    (t) =>
+      t.assigned_agent.toLowerCase().includes(agent.name.toLowerCase()) ||
+      agent.name.toLowerCase().includes(t.assigned_agent.toLowerCase()) ||
+      t.assigned_agent.toLowerCase().includes(agent.role.toLowerCase())
   );
 
   const agentMemories = memories.filter(
-    (m) => m.agent_name.toLowerCase().includes(agent.name.toLowerCase()) ||
-           agent.name.toLowerCase().includes(m.agent_name.toLowerCase())
+    (m) =>
+      m.agent_name.toLowerCase().includes(agent.name.toLowerCase()) ||
+      agent.name.toLowerCase().includes(m.agent_name.toLowerCase())
   );
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'WORKING':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
-            <Cpu className="w-3.5 h-3.5 animate-spin" /> Working
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black bg-orange-500 text-white animate-pulse border border-[#2c2621]">
+            <Cpu className="w-3 h-3 animate-spin" /> WORKING
           </span>
         );
       case 'COMPLETED':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Completed
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black bg-emerald-600 text-white border border-[#2c2621]">
+            <CheckCircle2 className="w-3 h-3" /> COMPLETED
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-700/50 text-slate-400 border border-slate-600">
-            <Clock className="w-3.5 h-3.5" /> Waiting
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black bg-amber-400 text-[#2c2621] border border-[#2c2621]">
+            <Clock className="w-3 h-3" /> IN REVIEW / IDLE
           </span>
         );
     }
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 w-full max-w-lg bg-slate-900/95 backdrop-blur-xl border-l border-slate-800 shadow-2xl z-50 flex flex-col p-6 overflow-y-auto">
+    <div className="fixed inset-y-0 right-0 w-full max-w-md bg-[#ebdcd0] border-l-4 border-[#2c2621] shadow-2xl z-50 flex flex-col font-mono text-[#2c2621] select-none">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-indigo-600/20 border border-indigo-500/30 rounded-xl text-indigo-400">
-            <Bot className="w-6 h-6" />
+      <div className="flex items-center justify-between border-b-4 border-[#2c2621] bg-[#e4d3c3] p-3.5">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-9 h-9 bg-[#f4ece1] border-2 border-[#2c2621] rounded-lg flex items-center justify-center text-xl shadow">
+            {agent.role.includes('CEO') ? '👨‍💼' :
+             agent.role.includes('Research') || agent.name.includes('Meera') ? '👩‍🔬' :
+             agent.role.includes('CTO') || agent.name.includes('Rohan') ? '👨‍💻' :
+             agent.role.includes('Marketing') || agent.name.includes('Isha') ? '👩‍💼' : '👨‍🔧'}
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-100">{agent.name}</h2>
-            <p className="text-xs text-indigo-300 font-medium">{agent.role}</p>
+            <h2 className="text-sm font-black text-[#2c2621] uppercase tracking-wider">{agent.name}</h2>
+            <p className="text-[10px] text-[#6b5b52] font-bold">{agent.role}</p>
           </div>
         </div>
         <button
-          onClick={onClose}
-          className="p-2 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-slate-800 transition"
+          onClick={() => {
+            sound.playClick();
+            onClose();
+          }}
+          className="p-1 bg-[#f4ece1] hover:bg-[#d8c3b1] border-2 border-[#2c2621] rounded text-[#2c2621] shadow cursor-pointer"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Status & Objective */}
-      <div className="space-y-6">
-        <div className="bg-slate-950/60 rounded-xl border border-slate-800/80 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Current Status</span>
+      {/* Body Content */}
+      <div className="p-3.5 overflow-y-auto space-y-3.5 bg-[#f9f3eb] flex-1 text-xs">
+        {/* Status & Objective */}
+        <div className="bg-[#f4ece1] border-2 border-[#2c2621] rounded-lg p-3 space-y-2 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-black uppercase tracking-wider text-[#6b5b52]">CURRENT STATUS</span>
             {getStatusBadge(agent.status)}
           </div>
-          <div className="space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Objective</span>
-            <p className="text-sm text-slate-300 leading-relaxed">{agent.objective}</p>
+          <div className="border-t border-[#d8c3b1] pt-2 space-y-1">
+            <span className="text-[9px] font-black uppercase tracking-wider text-[#6b5b52]">PRIMARY OBJECTIVE</span>
+            <p className="text-[11px] text-[#4a3e37] leading-relaxed">{agent.objective}</p>
           </div>
         </div>
 
         {/* Current Active Task */}
         {agent.current_task && (
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-indigo-400" /> Current Active Task
-            </h3>
-            <div className="bg-indigo-950/30 border border-indigo-800/40 p-3.5 rounded-xl text-sm text-indigo-200">
+          <div className="bg-[#e4d3c3] border-2 border-[#2c2621] rounded-lg p-2.5 space-y-1">
+            <div className="text-[9px] font-black uppercase tracking-wider text-[#6b5b52] flex items-center gap-1.5">
+              <Cpu className="w-3 h-3 text-[#8c3b00]" /> CURRENT ACTIVE TASK
+            </div>
+            <div className="text-[11px] font-bold text-[#2c2621]">
               {agent.current_task}
             </div>
           </div>
         )}
 
         {/* Capabilities */}
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" /> Capabilities & Tools
-          </h3>
-          <div className="flex flex-wrap gap-2">
+        <div className="bg-[#f4ece1] border-2 border-[#2c2621] rounded-lg p-3 space-y-2 shadow-sm">
+          <div className="text-[9px] font-black uppercase tracking-wider text-[#6b5b52] flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-800" /> CAPABILITIES & TOOLS
+          </div>
+          <div className="flex flex-wrap gap-1.5">
             {agent.capabilities.map((cap, i) => (
               <span
                 key={i}
-                className="px-2.5 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-lg text-xs font-medium"
+                className="px-2 py-0.5 bg-[#e4d3c3] text-[#2c2621] border border-[#2c2621] rounded text-[9px] font-bold"
               >
                 {cap}
               </span>
@@ -111,26 +122,39 @@ export default function AgentDrawer({ agent, onClose, tasks, memories }: AgentDr
         </div>
 
         {/* Assigned Tasks */}
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-            <ListTodo className="w-4 h-4 text-amber-400" /> Assigned Tasks ({agentTasks.length})
-          </h3>
-          <div className="space-y-3">
+        <div className="bg-[#f4ece1] border-2 border-[#2c2621] rounded-lg p-3 space-y-2 shadow-sm">
+          <div className="text-[9px] font-black uppercase tracking-wider text-[#6b5b52] flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <ListTodo className="w-3.5 h-3.5 text-amber-700" /> ASSIGNED TASKS ({agentTasks.length})
+            </span>
+          </div>
+
+          <div className="space-y-2">
             {agentTasks.length === 0 ? (
-              <p className="text-xs text-slate-500 italic">No task assigned yet.</p>
+              <p className="text-[10px] text-[#8c7b70] italic">No active task queue.</p>
             ) : (
               agentTasks.map((t) => (
-                <div key={t.id} className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-semibold text-slate-200">{t.title}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${
-                      t.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-300' :
-                      t.status === 'RUNNING' ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-400'
-                    }`}>
+                <div key={t.id} className="bg-[#f9f3eb] border border-[#2c2621] rounded p-2 space-y-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] font-bold text-[#2c2621] line-clamp-1">{t.title}</span>
+                    <span
+                      className={`text-[8px] font-black px-1 rounded uppercase ${
+                        t.status === 'COMPLETED'
+                          ? 'bg-emerald-600 text-white'
+                          : t.status === 'RUNNING'
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-amber-400 text-[#2c2621]'
+                      }`}
+                    >
                       {t.status}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">{t.description}</p>
+                  <p className="text-[9px] text-[#6b5b52]">{t.description}</p>
+                  {t.result && (
+                    <div className="text-[9px] text-emerald-800 bg-[#eef7ef] p-1 rounded border border-emerald-300 mt-1 font-semibold">
+                      ✓ {t.result}
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -138,23 +162,24 @@ export default function AgentDrawer({ agent, onClose, tasks, memories }: AgentDr
         </div>
 
         {/* Memory Outputs */}
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-            <Database className="w-4 h-4 text-blue-400" /> Generated Artifacts & Memory Outputs
-          </h3>
-          <div className="space-y-3">
+        <div className="bg-[#f4ece1] border-2 border-[#2c2621] rounded-lg p-3 space-y-2 shadow-sm">
+          <div className="text-[9px] font-black uppercase tracking-wider text-[#6b5b52] flex items-center gap-1.5">
+            <Database className="w-3.5 h-3.5 text-indigo-700" /> GENERATED MEMORY ARTIFACTS
+          </div>
+
+          <div className="space-y-2">
             {agentMemories.length === 0 ? (
-              <p className="text-xs text-slate-500 italic">No output stored in company memory yet.</p>
+              <p className="text-[10px] text-[#8c7b70] italic">No memory stored by this agent yet.</p>
             ) : (
               agentMemories.map((m) => (
-                <div key={m.id} className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 space-y-2">
+                <div key={m.id} className="bg-[#f9f3eb] border border-[#2c2621] rounded p-2 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-indigo-400">{m.key}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 text-slate-300 rounded uppercase font-semibold">
+                    <span className="text-[10px] font-black text-[#8c3b00]">{m.key}</span>
+                    <span className="text-[8px] px-1 bg-[#2c2621] text-[#f4ece1] rounded uppercase font-bold">
                       {m.category}
                     </span>
                   </div>
-                  <pre className="text-[11px] font-mono text-slate-300 bg-slate-900 p-2.5 rounded border border-slate-800 max-h-40 overflow-y-auto whitespace-pre-wrap">
+                  <pre className="text-[9px] font-mono text-[#2c2621] bg-[#ebdcd0] p-1.5 rounded border border-[#d8c3b1] max-h-32 overflow-y-auto whitespace-pre-wrap">
                     {typeof m.value === 'string' ? m.value : JSON.stringify(m.value, null, 2)}
                   </pre>
                 </div>

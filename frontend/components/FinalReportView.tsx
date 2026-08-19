@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { FileText, Download, CheckCircle2, Copy, Check } from 'lucide-react';
+import { sound } from '@/utils/sound';
 
 interface FinalReportViewProps {
   reportContent: string | null;
@@ -13,6 +14,7 @@ export default function FinalReportView({ reportContent, companyGoal }: FinalRep
 
   const handleCopy = () => {
     if (reportContent) {
+      sound.playClick();
       navigator.clipboard.writeText(reportContent);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -21,6 +23,7 @@ export default function FinalReportView({ reportContent, companyGoal }: FinalRep
 
   const handleDownload = () => {
     if (!reportContent) return;
+    sound.playClick();
     const blob = new Blob([reportContent], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -34,49 +37,51 @@ export default function FinalReportView({ reportContent, companyGoal }: FinalRep
 
   if (!reportContent) {
     return (
-      <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-12 text-center space-y-3 shadow-2xl">
-        <FileText className="w-10 h-10 mx-auto text-indigo-500/50 animate-pulse" />
-        <h3 className="text-lg font-bold text-slate-200">Executive Report Not Generated Yet</h3>
-        <p className="text-xs text-slate-400 max-w-md mx-auto">
-          The CEO Orchestrator will synthesize findings from Research, CTO Architecture, Marketing Strategy, and Development code deliverables into a final executive company report upon pipeline completion.
+      <div className="bg-[#ebdcd0] border-4 border-[#2c2621] rounded-2xl p-10 text-center space-y-3 shadow-2xl font-mono text-[#2c2621]">
+        <FileText className="w-8 h-8 mx-auto text-[#8c7b70] animate-pulse" />
+        <h3 className="text-sm font-black uppercase">Executive Report Not Generated Yet</h3>
+        <p className="text-xs text-[#6b5b52] max-w-md mx-auto">
+          The CEO Orchestrator will synthesize findings from Research, CTO Architecture, Marketing Strategy, and Development deliverables into a final executive company report upon pipeline completion.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-emerald-400">
-            <CheckCircle2 className="w-5 h-5" />
+    <div className="bg-[#ebdcd0] border-4 border-[#2c2621] rounded-2xl p-4 shadow-2xl space-y-4 font-mono text-[#2c2621]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-[#2c2621] pb-3">
+        <div className="flex items-center space-x-2.5">
+          <div className="p-1.5 bg-[#f4ece1] border-2 border-[#2c2621] rounded text-emerald-800">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-100">Final Executive Company Report</h2>
-            <p className="text-xs text-slate-400">Target Objective: {companyGoal}</p>
+            <h2 className="text-xs font-black uppercase tracking-wider text-[#2c2621]">
+              FINAL EXECUTIVE COMPANY REPORT
+            </h2>
+            <p className="text-[9px] text-[#6b5b52]">Target Objective: {companyGoal}</p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
           <button
             onClick={handleCopy}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition"
+            className="flex items-center space-x-1.5 px-3 py-1 bg-[#f4ece1] hover:bg-[#e4d3c3] border-2 border-[#2c2621] rounded text-xs font-bold text-[#2c2621] transition shadow cursor-pointer"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-            <span>{copied ? 'Copied' : 'Copy Markdown'}</span>
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-700" /> : <Copy className="w-3.5 h-3.5 text-[#2c2621]" />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
           <button
             onClick={handleDownload}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/30 transition"
+            className="flex items-center space-x-1.5 px-3.5 py-1 bg-[#2c2621] hover:bg-[#3d3630] text-[#f4ece1] rounded text-xs font-black transition shadow cursor-pointer uppercase"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Download Report (.md)</span>
+            <span>Download .md</span>
           </button>
         </div>
       </div>
 
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-6 overflow-x-auto">
-        <pre className="text-xs font-mono text-slate-200 leading-relaxed whitespace-pre-wrap">
+      <div className="bg-[#f9f3eb] border-2 border-[#2c2621] rounded-xl p-4 overflow-x-auto shadow-sm">
+        <pre className="text-xs font-mono text-[#2c2621] leading-relaxed whitespace-pre-wrap">
           {reportContent}
         </pre>
       </div>
