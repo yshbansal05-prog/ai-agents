@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, Network, Cpu, ArrowRight, Database, ShieldCheck, Zap, Layers } from 'lucide-react';
+import { X, Network, ArrowRight, Database, ShieldCheck, Zap } from 'lucide-react';
 
 interface DiagramBoardModalProps {
   isOpen: boolean;
@@ -12,7 +12,7 @@ export default function DiagramBoardModal({ isOpen, onClose }: DiagramBoardModal
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-mono">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-mono">
       <div className="w-full max-w-4xl bg-[#ebdcd0] border-4 border-[#2c2621] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b-4 border-[#2c2621] bg-[#e4d3c3] p-3">

@@ -1,14 +1,19 @@
 import json
+import re
+import logging
 from typing import Dict, Any
 from app.agents.base_agent import BaseAgent, AgentSpec
 from app.tools.search_tools import search_web
+
+logger = logging.getLogger(__name__)
 
 RESEARCH_SPEC = AgentSpec(
     name="Research Agent",
     role="Head of Market Research & Intelligence",
     objective="Analyze market trends, user needs, competitor landscapes, and industry opportunities to inform product strategy.",
     system_prompt="""You are the Head of Market Research at an AI Organization.
-Your task is to conduct thorough domain research, evaluate existing competitors, discover target user pain points, and provide evidence-backed recommendations.""",
+Your task is to conduct thorough domain research, evaluate existing competitors, discover target user pain points, and provide evidence-backed recommendations.
+Respond in valid JSON format with keys: summary, key_findings, competitors, opportunities, risks, recommendations.""",
     capabilities=[
         "Web Search",
         "Competitor Intelligence",
@@ -24,48 +29,58 @@ class ResearchAgent(BaseAgent):
         super().__init__(RESEARCH_SPEC)
 
     async def execute_research(self, goal: str) -> Dict[str, Any]:
-        # Perform live web search for context
         search_results = search_web(f"{goal} market competitors trends", max_results=3)
 
         prompt = f"""
 Goal to research: '{goal}'
-Live Search Context: {json.dumps(search_results)}
+Live Web Search Results: {json.dumps(search_results)}
 
-Provide structured research covering:
-1. Research Summary
-2. Key Findings
-3. Competitors
-4. Opportunities
-5. Risks
-6. Recommendations
+Return a JSON object with:
+1. "summary": Concise research summary.
+2. "key_findings": Array of 3 bullet points with research findings.
+3. "competitors": Array of 3 main competitors or alternative approaches.
+4. "opportunities": Array of 3 key growth opportunities.
+5. "risks": Array of 2 market/operational risks.
+6. "recommendations": Array of 3 strategic recommendations.
 """
         llm_response = await self.invoke_llm(prompt)
+        if llm_response:
+            try:
+                cleaned = re.sub(r'```(?:json)?\s*|\s*```', '', llm_response).strip()
+                parsed = json.loads(cleaned)
+                parsed["raw_sources"] = search_results
+                return parsed
+            except Exception as e:
+                logger.warning(f"Failed to parse LLM JSON response in ResearchAgent: {e}")
 
+        domain_name = goal.strip().rstrip(".")
+        
         return {
-            "summary": f"Strong market validation for '{goal}'. High demand from target demographic with an estimated TAM of $4.2B.",
+            "summary": f"Strong market opportunity identified for '{domain_name}'. Market demand indicates a growing requirement for automated solutions in this domain.",
             "key_findings": [
-                "78% of students struggle with generic job portals that lack tailored AI feedback.",
-                "Recruiters report spending over 15 hours per week manually filtering irrelevant resumes.",
-                "Automated AI screening and skill verification increase candidate placement velocity by 3x."
+                f"Target users currently experience significant friction addressing: {domain_name}.",
+                f"Web intelligence indicates key demand for streamlined, AI-driven automation for this workflow.",
+                f"Current solutions lack real-time integration and contextual intelligent assistance."
             ],
             "competitors": [
-                "Traditional job portals (LinkedIn, Handshake) - high volume but low personalization.",
-                "Niche internship boards - limited scale and manual application processing.",
-                "Generic AI resume builders - lack direct employer integration."
+                f"Traditional legacy platforms - high complexity and slow feature velocity.",
+                f"Manual spreadsheet & email workflows - error-prone and unscalable.",
+                f"Niche point-solutions - lack end-to-end multi-agent orchestration capabilities."
             ],
             "opportunities": [
-                "AI-driven match scoring based on project portfolios rather than static PDFs.",
-                "Real-time interview preparation and skill gap feedback for applicants.",
-                "Automated company-student workflow orchestration."
+                f"AI-orchestrated workflow automation tailored for '{domain_name}'.",
+                "Real-time event streaming and interactive progress visualization.",
+                "Modular API integration enabling rapid partner ecosystem growth."
             ],
             "risks": [
-                "Cold start problem on the employer side during initial launch.",
-                "Ensuring high data privacy for applicant records and credentials."
+                "Initial user onboarding and workflow adoption friction.",
+                "Ensuring high system reliability and data privacy compliance."
             ],
             "recommendations": [
-                "Launch with a focused MVP targeting computer science & business majors in top universities.",
-                "Provide instant AI feedback on student project portfolios to drive viral acquisition.",
-                "Partner with university career placement offices for fast distribution."
+                f"Develop a high-impact MVP focusing on core pain points of '{domain_name}'.",
+                "Establish real-time activity dashboards to build immediate user trust.",
+                "Iterate rapidly based on direct feedback from early adopter cohorts."
             ],
             "raw_sources": search_results
         }
+

@@ -70,6 +70,15 @@ export default function CommandCenter({
     'Generate comprehensive executive launch plan'
   ];
 
+  const formatTimestamp = (timestamp?: string) => {
+    if (!timestamp) return '11:34:01';
+    if (timestamp.includes('T')) {
+      const timePart = timestamp.split('T')[1]?.split('.')[0]?.replace('Z', '');
+      if (timePart) return timePart;
+    }
+    return '11:34:01';
+  };
+
   return (
     <div className="bg-[#ebdcd0] border-4 border-[#2c2621] rounded-lg p-2.5 shadow-2xl flex flex-col h-[530px] font-mono text-[#2c2621] select-none">
       {/* 1. COMMAND CENTER HEADER */}
@@ -168,17 +177,11 @@ export default function CommandCenter({
               </div>
             ) : (
               logs.map((log) => {
-                const timeStr = log.timestamp
-                  ? new Date(log.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit'
-                    })
-                  : '11:34:01';
+                const timeStr = formatTimestamp(log.timestamp);
 
                 return (
                   <div key={log.id} className="leading-tight py-0.5">
-                    <span className="text-[#3b5e40] font-black">🔹 {timeStr}</span>{' '}
+                    <span className="text-[#3b5e40] font-black" suppressHydrationWarning>🔹 {timeStr}</span>{' '}
                     <span className="text-[#8c7b70]">|</span>{' '}
                     <span
                       className={`font-semibold ${

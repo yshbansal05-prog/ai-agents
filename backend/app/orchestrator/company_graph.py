@@ -60,11 +60,28 @@ class CompanyOrchestrator:
                     f"CEO successfully created {len(tasks)} core execution tasks.", "SUCCESS"
                 )
 
-                # Save initial task records into DB
+                # Save initial task records into DB & broadcast
                 for t in tasks:
+                    task_obj = TaskModel(
+                        company_id=company_id,
+                        title=t["title"],
+                        description=t["description"],
+                        assigned_agent=t["assigned_agent"],
+                        status="PENDING",
+                        priority=t.get("priority", "MEDIUM"),
+                        dependencies=t.get("dependencies", [])
+                    )
+                    db.add(task_obj)
                     await CompanyMemoryManager.add_memory(
                         db, company_id, "CEO / Orchestrator Agent",
                         f"TASK_{t['title']}", t, category="TASK"
+                    )
+
+                await db.commit()
+
+                for t in tasks:
+                    await CompanyMemoryManager.update_task_status(
+                        db, company_id, t["title"], "PENDING"
                     )
 
                 await CompanyMemoryManager.update_agent_status(

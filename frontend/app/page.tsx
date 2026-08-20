@@ -111,13 +111,27 @@ export default function Dashboard() {
         } else if (data.event_type === 'task_status') {
           sound.playTick();
           setTasks((prev) => {
-            const exists = prev.some((t) => t.title === data.data.title);
+            const exists = prev.some((t) => t.title === data.data.title || (data.data.task_id && t.id === data.data.task_id));
             if (exists) {
               return prev.map((t) =>
-                t.title === data.data.title ? { ...t, status: data.data.status, result: data.data.result } : t
+                t.title === data.data.title || (data.data.task_id && t.id === data.data.task_id)
+                  ? { ...t, status: data.data.status, result: data.data.result !== undefined ? data.data.result : t.result }
+                  : t
               );
             } else {
-              return [...prev, data.data];
+              return [
+                ...prev,
+                {
+                  id: data.data.task_id || `task-${Date.now()}`,
+                  title: data.data.title,
+                  description: data.data.description || '',
+                  assigned_agent: data.data.assigned_agent || '',
+                  status: data.data.status || 'PENDING',
+                  priority: data.data.priority || 'MEDIUM',
+                  dependencies: data.data.dependencies || [],
+                  result: data.data.result
+                }
+              ];
             }
           });
         } else if (data.event_type === 'activity_log') {
@@ -465,6 +479,14 @@ export default function Dashboard() {
     if (!goalToUse.trim() || isRunning) return;
 
     sound.playExecute();
+    setIsRunning(true);
+    setCompany({
+      id: `comp-${Date.now()}`,
+      name: 'AI ORG OS V1.0.0 - DEBUGGERS INC.',
+      goal: goalToUse.trim(),
+      status: 'IN_PROGRESS',
+      created_at: new Date().toISOString()
+    });
 
     try {
       const res = await fetch(`${apiBase}/create`, {
@@ -480,6 +502,7 @@ export default function Dashboard() {
 
       const createData = await res.json();
       const companyId = createData.company_id;
+      setCompany((prev) => ({ ...prev, id: companyId }));
 
       // Connect SSE
       connectSSE(companyId);

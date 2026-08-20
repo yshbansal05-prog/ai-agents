@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Database, Search, HardDrive, Cpu, Copy, Check } from 'lucide-react';
+import { X, Database, Search, Copy, Check } from 'lucide-react';
 import { Memory } from '@/types';
 
 interface MemoryCoreModalProps {
@@ -35,7 +35,7 @@ export default function MemoryCoreModal({ isOpen, onClose, memories }: MemoryCor
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-mono">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-mono">
       <div className="w-full max-w-4xl bg-[#ebdcd0] border-4 border-[#2c2621] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b-4 border-[#2c2621] bg-[#e4d3c3] p-3">

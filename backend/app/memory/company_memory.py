@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.database import (
-    MemoryModel, DecisionModel, ActivityLogModel, TaskModel, AgentModel, MessageModel, CompanyModel
+    MemoryModel, DecisionModel, ActivityLogModel, TaskModel, AgentModel
 )
 from app.services.event_manager import event_manager
 
@@ -105,7 +105,7 @@ class CompanyMemoryManager:
         decision: str,
         rationale: str,
         made_by: str = "CEO / Orchestrator",
-        context: Dict[str, Any] = None
+        context: Optional[Dict[str, Any]] = None
     ) -> DecisionModel:
         decision_obj = DecisionModel(
             company_id=company_id,
@@ -142,12 +142,20 @@ class CompanyMemoryManager:
         current_task: Optional[str] = None
     ):
         result = await db.execute(
-            select(AgentModel).where(
-                AgentModel.company_id == company_id,
-                AgentModel.name == agent_name
-            )
+            select(AgentModel).where(AgentModel.company_id == company_id)
         )
-        agent = result.scalars().first()
+        agents = result.scalars().all()
+        agent = None
+        for a in agents:
+            if (
+                a.name.lower() in agent_name.lower()
+                or agent_name.lower() in a.name.lower()
+                or a.role.lower() in agent_name.lower()
+                or agent_name.lower() in a.role.lower()
+            ):
+                agent = a
+                break
+
         if agent:
             agent.status = status
             if current_task is not None:
@@ -159,7 +167,7 @@ class CompanyMemoryManager:
                 "agent_status",
                 {
                     "agent_id": agent.id,
-                    "agent_name": agent_name,
+                    "agent_name": agent.name,
                     "role": agent.role,
                     "status": status,
                     "current_task": agent.current_task
@@ -181,6 +189,18 @@ class CompanyMemoryManager:
             )
         )
         task = result.scalars().first()
+        if not task:
+            all_tasks_res = await db.execute(
+                select(TaskModel).where(TaskModel.company_id == company_id)
+            )
+            for t in all_tasks_res.scalars().all():
+                if (
+                    task_title.lower() in t.title.lower()
+                    or t.title.lower() in task_title.lower()
+                ):
+                    task = t
+                    break
+
         if task:
             task.status = status
             if result_text:
@@ -200,3 +220,4 @@ class CompanyMemoryManager:
                     "result": task.result
                 }
             )
+

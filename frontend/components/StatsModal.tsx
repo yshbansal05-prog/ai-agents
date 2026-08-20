@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, BarChart3, TrendingUp, Zap, Clock, Coins, CheckCircle, Award } from 'lucide-react';
+import { X, BarChart3, Award } from 'lucide-react';
 import { Agent, Task } from '@/types';
 
 interface StatsModalProps {
@@ -18,7 +18,7 @@ export default function StatsModal({ isOpen, onClose, agents, tasks }: StatsModa
   const completionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 100;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-mono">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-mono">
       <div className="w-full max-w-2xl bg-[#ebdcd0] border-4 border-[#2c2621] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b-4 border-[#2c2621] bg-[#e4d3c3] p-3">

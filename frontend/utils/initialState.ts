@@ -5,7 +5,7 @@ export const INITIAL_COMPANY: Company = {
   name: 'AI ORG OS V1.0.0 - DEBUGGERS INC.',
   goal: 'Build an AI-powered internship platform for college students.',
   status: 'IN_PROGRESS',
-  created_at: new Date().toISOString()
+  created_at: '2026-08-19T11:34:00Z'
 };
 
 export const INITIAL_AGENTS: Agent[] = [

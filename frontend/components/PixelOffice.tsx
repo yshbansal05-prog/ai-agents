@@ -229,7 +229,7 @@ export default function PixelOffice({
           {/* Row 1 Desk 1: Meera (Research - Afro/Dark hair blue shirt style) */}
           <div className="relative flex flex-col items-center">
             <PixelDesk monitorScreenColor="cyan" accessories="mug" />
-            {!meetingMode && renderDeskCharacter(research, 'arnav', 'Meera')}
+            {!meetingMode && renderDeskCharacter(research, 'meera', 'Meera')}
           </div>
 
           {/* Row 1 Desk 2: Empty Desk */}

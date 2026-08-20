@@ -9,6 +9,15 @@ interface ConflictsViewProps {
 }
 
 export default function ConflictsView({ decisions }: ConflictsViewProps) {
+  const formatTimestamp = (timestamp?: string) => {
+    if (!timestamp) return 'Recent';
+    if (timestamp.includes('T')) {
+      const timePart = timestamp.split('T')[1]?.split('.')[0]?.replace('Z', '');
+      if (timePart) return timePart;
+    }
+    return 'Recent';
+  };
+
   if (decisions.length === 0) {
     return (
       <div className="bg-[#ebdcd0] border-4 border-[#2c2621] rounded-2xl p-8 text-center space-y-3 shadow-2xl font-mono text-[#2c2621]">
@@ -48,8 +57,8 @@ export default function ConflictsView({ decisions }: ConflictsViewProps) {
                 <Zap className="w-3 h-3" />
                 <span>CONFLICT ARBITRATION #{String(i + 1).padStart(3, '0')}</span>
               </span>
-              <span className="text-[9px] text-[#6b5b52] font-bold">
-                {dec.created_at ? new Date(dec.created_at).toLocaleTimeString() : 'Recent'}
+              <span className="text-[9px] text-[#6b5b52] font-bold" suppressHydrationWarning>
+                {formatTimestamp(dec.created_at)}
               </span>
             </div>
 

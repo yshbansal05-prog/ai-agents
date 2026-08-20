@@ -9,6 +9,15 @@ interface ActivityFeedProps {
 }
 
 export default function ActivityFeed({ logs }: ActivityFeedProps) {
+  const formatTimestamp = (timestamp?: string) => {
+    if (!timestamp) return '11:34:01';
+    if (timestamp.includes('T')) {
+      const timePart = timestamp.split('T')[1]?.split('.')[0]?.replace('Z', '');
+      if (timePart) return timePart;
+    }
+    return '11:34:01';
+  };
+
   const getLevelBadge = (level: string) => {
     switch (level) {
       case 'SUCCESS':
@@ -46,9 +55,7 @@ export default function ActivityFeed({ logs }: ActivityFeedProps) {
       ) : (
         <div className="relative pl-5 space-y-3 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#2c2621]">
           {logs.map((log) => {
-            const timeStr = log.timestamp
-              ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-              : '11:34:01';
+            const timeStr = formatTimestamp(log.timestamp);
 
             return (
               <div key={log.id} className="relative flex items-start space-x-2.5">
@@ -59,7 +66,7 @@ export default function ActivityFeed({ logs }: ActivityFeedProps) {
                 <div className="flex-1 bg-[#f9f3eb] border-2 border-[#2c2621] rounded-lg p-2.5 shadow-sm">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] font-black text-[#8c3b00] uppercase tracking-wider">{log.agent_name}</span>
-                    <span className="text-[9px] font-bold text-[#6b5b52]">{timeStr}</span>
+                    <span className="text-[9px] font-bold text-[#6b5b52]" suppressHydrationWarning>{timeStr}</span>
                   </div>
                   <p className={`text-xs leading-relaxed ${
                     log.level === 'CONFLICT' ? 'text-amber-950 font-black' :
