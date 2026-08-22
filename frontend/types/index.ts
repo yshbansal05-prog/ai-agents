@@ -48,6 +48,15 @@ export interface ActivityLog {
   timestamp?: string;
 }
 
+export interface Message {
+  id: string;
+  sender_agent: string;
+  recipient_agent: string;
+  content: string;
+  type?: string;
+  timestamp?: string;
+}
+
 export interface Company {
   id: string;
   name: string;

@@ -25,6 +25,7 @@ import {
   INITIAL_LOGS
 } from '@/utils/initialState';
 import { sound } from '@/utils/sound';
+import { api, DEFAULT_API_BASE } from '@/utils/api';
 
 import {
   BarChart3,
@@ -61,9 +62,14 @@ export default function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
   // Settings configuration
-  const [apiBase, setApiBase] = useState<string>('http://localhost:8000/api/company');
+  const [apiBase, setApiBase] = useState<string>(DEFAULT_API_BASE);
   const [simulationSpeed, setSimulationSpeed] = useState<number>(1);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+
+  // Keep api service in sync with custom settings
+  useEffect(() => {
+    api.setBaseUrl(apiBase);
+  }, [apiBase]);
 
   const sseRef = useRef<EventSource | null>(null);
   const simulationTimers = useRef<NodeJS.Timeout[]>([]);
@@ -92,8 +98,22 @@ export default function Dashboard() {
   const connectSSE = (companyId: string) => {
     if (sseRef.current) sseRef.current.close();
     try {
-      const sse = new EventSource(`${apiBase}/${companyId}/events`);
+      const sse = new EventSource(api.getEventsUrl(companyId));
       sseRef.current = sse;
+
+      const matchAgent = (a: Agent, targetName: string) => {
+        const t = (targetName || '').toLowerCase();
+        const n = (a.name || '').toLowerCase();
+        const r = (a.role || '').toLowerCase();
+        if (n.includes(t) || t.includes(n)) return true;
+        if (r.includes(t) || t.includes(r)) return true;
+        if (t.includes('ceo') && (r.includes('ceo') || n.includes('arnav'))) return true;
+        if (t.includes('research') && (r.includes('intel') || r.includes('research') || n.includes('meera'))) return true;
+        if (t.includes('cto') && (r.includes('cto') || r.includes('architect') || n.includes('rohan'))) return true;
+        if (t.includes('marketing') && (r.includes('marketing') || r.includes('growth') || n.includes('isha'))) return true;
+        if ((t.includes('dev') || t.includes('finance')) && (r.includes('dev') || r.includes('finance') || n.includes('kabir'))) return true;
+        return false;
+      };
 
       const handleEvent = (data: any) => {
         if (isPaused) return;
@@ -102,8 +122,7 @@ export default function Dashboard() {
           sound.playTick();
           setAgents((prev) =>
             prev.map((a) =>
-              a.name.toLowerCase().includes(data.data.agent_name.toLowerCase()) ||
-              data.data.agent_name.toLowerCase().includes(a.name.toLowerCase())
+              matchAgent(a, data.data.agent_name)
                 ? { ...a, status: data.data.status, current_task: data.data.current_task }
                 : a
             )
@@ -137,6 +156,18 @@ export default function Dashboard() {
         } else if (data.event_type === 'activity_log') {
           sound.playTick();
           setLogs((prev) => [...prev, data.data]);
+        } else if (data.event_type === 'agent_message') {
+          sound.playTick();
+          setLogs((prev) => [
+            ...prev,
+            {
+              id: data.data.id || `msg-${Date.now()}`,
+              agent_name: data.data.sender_agent || 'Agent',
+              message: `💬 [${data.data.sender_agent} -> ${data.data.recipient_agent}]: ${data.data.content}`,
+              level: 'INFO',
+              timestamp: data.data.timestamp || new Date().toISOString()
+            }
+          ]);
         } else if (data.event_type === 'memory_added') {
           setMemories((prev) => [...prev, data.data]);
           if (data.data.key === 'FINAL_EXECUTIVE_REPORT') {
@@ -149,7 +180,7 @@ export default function Dashboard() {
         }
       };
 
-      const eventTypes = ['agent_status', 'task_status', 'activity_log', 'memory_added', 'decision_made'];
+      const eventTypes = ['agent_status', 'task_status', 'activity_log', 'memory_added', 'decision_made', 'agent_message'];
       eventTypes.forEach((evtType) => {
         sse.addEventListener(evtType, (evt: MessageEvent) => {
           try {
@@ -489,18 +520,7 @@ export default function Dashboard() {
     });
 
     try {
-      const res = await fetch(`${apiBase}/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: 'AI ORG OS V1.0.0 - DEBUGGERS INC.',
-          goal: goalToUse.trim()
-        })
-      });
-
-      if (!res.ok) throw new Error('Backend offline');
-
-      const createData = await res.json();
+      const createData = await api.createCompany(goalToUse.trim(), 'AI ORG OS V1.0.0 - DEBUGGERS INC.');
       const companyId = createData.company_id;
       setCompany((prev) => ({ ...prev, id: companyId }));
 
@@ -508,7 +528,7 @@ export default function Dashboard() {
       connectSSE(companyId);
 
       // Trigger backend pipeline run
-      await fetch(`${apiBase}/${companyId}/run`, { method: 'POST' });
+      await api.runCompany(companyId);
     } catch (err) {
       console.log('Running interactive fallback simulation engine:', err);
       runSimulatedPipeline(goalToUse);
