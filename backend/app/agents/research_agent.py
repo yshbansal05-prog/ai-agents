@@ -43,15 +43,10 @@ Return a JSON object with:
 5. "risks": Array of 2 market/operational risks.
 6. "recommendations": Array of 3 strategic recommendations.
 """
-        llm_response = await self.invoke_llm(prompt)
-        if llm_response:
-            try:
-                cleaned = re.sub(r'```(?:json)?\s*|\s*```', '', llm_response).strip()
-                parsed = json.loads(cleaned)
-                parsed["raw_sources"] = search_results
-                return parsed
-            except Exception as e:
-                logger.warning(f"Failed to parse LLM JSON response in ResearchAgent: {e}")
+        parsed = await self.invoke_json_llm(prompt)
+        if isinstance(parsed, dict) and "summary" in parsed:
+            parsed["raw_sources"] = search_results
+            return parsed
 
         domain_name = goal.strip().rstrip(".")
         

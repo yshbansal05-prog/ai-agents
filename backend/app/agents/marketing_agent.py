@@ -25,32 +25,46 @@ class MarketingAgent(BaseAgent):
     async def execute_marketing(self, goal: str, research_data: Dict[str, Any]) -> Dict[str, Any]:
         prompt = f"""
 Company Goal: '{goal}'
-Research Findings: {json.dumps(research_data)}
+Market Research Findings: {json.dumps(research_data)}
 
-Design the marketing and GTM strategy.
-Cover: Target Audience, Value Proposition, Positioning, Go-To-Market Strategy, Pricing, Risks.
+Design the marketing, brand positioning, and go-to-market (GTM) strategy for this company.
+Respond in valid JSON format matching this schema:
+{{
+  "target_audience": ["Primary target user group", "Secondary target segment", "Tertiary stakeholders"],
+  "value_prop": "Compelling, single-sentence value proposition",
+  "positioning": "Brand positioning statement differentiating from alternatives",
+  "gtm_strategy": ["Growth channel / launch tactic 1", "Growth channel / launch tactic 2", "Viral loop / referral mechanism"],
+  "pricing_model": {{
+    "tier_1": "Description of free/starter tier",
+    "tier_2": "Description of premium/enterprise tier"
+  }},
+  "risks": ["Marketing/adoption risk 1", "Marketing/adoption risk 2"]
+}}
 """
-        llm_response = await self.invoke_llm(prompt)
+        parsed = await self.invoke_json_llm(prompt)
+        if isinstance(parsed, dict) and "value_prop" in parsed:
+            return parsed
 
+        domain = goal.strip().rstrip(".")
         return {
             "target_audience": [
-                "Primary: Undergraduate & Graduate students seeking verified internships.",
-                "Secondary: Tech startups, scale-ups, and enterprise recruiters hiring early-career talent.",
-                "Tertiary: University career development centers & academic advisors."
+                f"Primary: End-users seeking automated solutions for {domain}.",
+                "Secondary: Enterprise teams and businesses looking to streamline workflow bottlenecks.",
+                "Tertiary: Ecosystem partners, developers, and platform integrators."
             ],
-            "value_prop": "The world's first AI-orchestrated internship ecosystem that replaces manual application grinding with automated project matching and verified skill credentials.",
-            "positioning": "From Static Job Postings to Autonomous AI Career Acceleration.",
+            "value_prop": f"The world's first AI-orchestrated platform that delivers autonomous end-to-end execution for {domain}.",
+            "positioning": f"From manual, fragmented tools to intelligent autonomous {domain} orchestration.",
             "gtm_strategy": [
-                "Campus Growth Drivers: Host university hackathons and launch campus student ambassador networks.",
-                "Employer Pipeline: Offer free tier candidate sourcing for initial 50 partner startups.",
-                "Viral Loops: AI-powered resume and project feedback generator shareable on LinkedIn."
+                f"Community Pilot Launch: Direct outreach and invite-only beta for leading teams in {domain}.",
+                "Developer & Partner Program: Open API integrations and strategic co-marketing.",
+                "Content & Viral Loops: Shareable outcome dashboards and benchmark case studies."
             ],
             "pricing_model": {
-                "Students": "100% Free Forever with basic AI match scoring.",
-                "Employers": "Freemium: Free for 2 active listings; $199/month for unlimited AI-ranked candidate shortlists and automated interview scheduling."
+                "Starter Tier": "Free / self-serve with core workflow automation capabilities.",
+                "Enterprise Tier": "Usage-based or tiered SaaS subscription with dedicated support and custom integrations."
             },
             "risks": [
-                "Low initial employer side liquidity during launch month.",
-                "High churn if student applications take too long to receive match confirmation."
+                "Early customer onboarding friction and change management.",
+                "Market education needed for autonomous AI workflows."
             ]
         }

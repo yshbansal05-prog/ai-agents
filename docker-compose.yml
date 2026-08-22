@@ -1,0 +1,98 @@
+version: "3.8"
+
+services:
+  # =========================================================
+  # 1. PostgreSQL Database with pgvector
+  # =========================================================
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: ai_org_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ai_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ai_secure_password}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_org}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_user} -d ${POSTGRES_DB:-ai_org}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai_org_network
+
+  # =========================================================
+  # 2. Python FastAPI Backend API Server
+  # =========================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai_org_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-ai_user}:${POSTGRES_PASSWORD:-ai_secure_password}@db:5432/${POSTGRES_DB:-ai_org}
+      - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - NVIDIA_BASE_URL=${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
+      - NVIDIA_MODEL=${NVIDIA_MODEL:-meta/llama-3.1-70b-instruct}
+      - LOCAL_LLM_URL=${LOCAL_LLM_URL:-http://localhost:11434/v1}
+      - LOCAL_LLM_MODEL=${LOCAL_LLM_MODEL:-llama3.1}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,*}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PORT=8000
+      - HOST=0.0.0.0
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - ai_org_network
+
+  # =========================================================
+  # 3. Next.js Frontend Dashboard
+  # =========================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai_org_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - ai_org_network
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  ai_org_network:
+    driver: bridge

@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.database import (
-    MemoryModel, DecisionModel, ActivityLogModel, TaskModel, AgentModel
+    MemoryModel, DecisionModel, ActivityLogModel, TaskModel, AgentModel, MessageModel
 )
 from app.services.event_manager import event_manager
 
@@ -220,4 +220,86 @@ class CompanyMemoryManager:
                     "result": task.result
                 }
             )
+
+    @staticmethod
+    async def add_message(
+        db: AsyncSession,
+        company_id: str,
+        sender_agent: str,
+        recipient_agent: str,
+        content: str,
+        type: str = "INFO"
+    ) -> MessageModel:
+        msg = MessageModel(
+            company_id=company_id,
+            sender_agent=sender_agent,
+            recipient_agent=recipient_agent,
+            content=content,
+            type=type
+        )
+        db.add(msg)
+        await db.commit()
+        await db.refresh(msg)
+
+        await event_manager.broadcast(
+            company_id,
+            "agent_message",
+            {
+                "id": msg.id,
+                "sender_agent": sender_agent,
+                "recipient_agent": recipient_agent,
+                "content": content,
+                "type": type,
+                "timestamp": msg.timestamp.isoformat() if msg.timestamp else datetime.now(timezone.utc).isoformat()
+            }
+        )
+        return msg
+
+    @staticmethod
+    async def get_messages(
+        db: AsyncSession,
+        company_id: str
+    ) -> List[Dict[str, Any]]:
+        result = await db.execute(
+            select(MessageModel)
+            .where(MessageModel.company_id == company_id)
+            .order_by(MessageModel.timestamp.asc())
+        )
+        messages = result.scalars().all()
+        return [
+            {
+                "id": m.id,
+                "sender_agent": m.sender_agent,
+                "recipient_agent": m.recipient_agent,
+                "content": m.content,
+                "type": m.type,
+                "timestamp": m.timestamp.isoformat() if m.timestamp else None
+            }
+            for m in messages
+        ]
+
+    @staticmethod
+    async def search_memories(
+        db: AsyncSession,
+        company_id: str,
+        query: str,
+        limit: int = 5
+    ) -> List[Dict[str, Any]]:
+        """Keyword and relevance-ranked memory retrieval across company artifacts."""
+        all_memories = await CompanyMemoryManager.get_memories(db, company_id)
+        if not query or not all_memories:
+            return all_memories[:limit]
+
+        query_terms = set(query.lower().split())
+        scored_memories = []
+        for mem in all_memories:
+            score = 0
+            text_corpus = f"{mem['key']} {mem['category']} {mem['agent_name']} {json.dumps(mem['value'])}".lower()
+            for term in query_terms:
+                if term in text_corpus:
+                    score += text_corpus.count(term)
+            scored_memories.append((score, mem))
+
+        scored_memories.sort(key=lambda x: x[0], reverse=True)
+        return [item[1] for item in scored_memories[:limit]]
 

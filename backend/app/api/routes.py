@@ -7,9 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.models.database import (
-    get_db, CompanyModel, AgentModel, TaskModel, MemoryModel, DecisionModel, ActivityLogModel
+    get_db, CompanyModel, AgentModel, TaskModel, MemoryModel, DecisionModel, ActivityLogModel, MessageModel
 )
-from app.models.schemas import CompanyCreate, CompanyResponse, AgentSchema, TaskSchema, MemorySchema, DecisionSchema, ActivityLogSchema
+from app.models.schemas import (
+    CompanyCreate, CompanyResponse, AgentSchema, TaskSchema, MemorySchema, DecisionSchema, ActivityLogSchema, MessageSchema
+)
+from app.memory.company_memory import CompanyMemoryManager
 from app.orchestrator.company_graph import orchestrator
 from app.services.event_manager import event_manager
 from app.agents.ceo_agent import CEO_SPEC
@@ -190,6 +193,16 @@ async def get_activity(company_id: str, db: AsyncSession = Depends(get_db)):
         }
         for l in logs
     ]
+
+@router.get("/{company_id}/messages")
+async def get_messages(company_id: str, db: AsyncSession = Depends(get_db)):
+    """Retrieves inter-agent communication dialogue history."""
+    return await CompanyMemoryManager.get_messages(db, company_id)
+
+@router.get("/{company_id}/search-memory")
+async def search_memory(company_id: str, q: str = "", limit: int = 5, db: AsyncSession = Depends(get_db)):
+    """Searches memory artifacts using relevance ranking."""
+    return await CompanyMemoryManager.search_memories(db, company_id, query=q, limit=limit)
 
 @router.get("/{company_id}/events")
 async def sse_events(company_id: str, request: Request):

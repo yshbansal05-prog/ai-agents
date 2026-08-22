@@ -1,12 +1,14 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 class CompanyCreate(BaseModel):
     name: Optional[str] = "AI Organization MVP"
-    goal: str = Field(..., example="Build an AI-powered internship platform for college students.")
+    goal: str = Field(..., json_schema_extra={"example": "Build an AI-powered internship platform for college students."})
 
 class AgentSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     company_id: str
     name: str
@@ -17,10 +19,9 @@ class AgentSchema(BaseModel):
     capabilities: List[str] = []
     dependencies: List[str] = []
 
-    class Config:
-        from_attributes = True
-
 class TaskSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     company_id: str
     title: str
@@ -33,10 +34,9 @@ class TaskSchema(BaseModel):
     created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
-
 class MemorySchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     company_id: str
     agent_name: str
@@ -45,10 +45,9 @@ class MemorySchema(BaseModel):
     category: str
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
-
 class DecisionSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     company_id: str
     title: str
@@ -58,10 +57,9 @@ class DecisionSchema(BaseModel):
     context: Dict[str, Any] = {}
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
-
 class ActivityLogSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     company_id: str
     agent_name: str
@@ -69,10 +67,20 @@ class ActivityLogSchema(BaseModel):
     level: str
     timestamp: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+class MessageSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    company_id: str
+    sender_agent: str
+    recipient_agent: str
+    content: str
+    type: str = "INFO"
+    timestamp: Optional[datetime] = None
 
 class CompanyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     goal: str
@@ -82,9 +90,6 @@ class CompanyResponse(BaseModel):
     decisions: List[DecisionSchema] = []
     final_report: Optional[str] = None
     created_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 class EventPayload(BaseModel):
     event_type: str  # agent_status, task_status, activity_log, memory_added, conflict_detected, decision_made, report_completed
