@@ -45,6 +45,8 @@ Respond in valid JSON format matching this schema:
 """
         parsed = await self.invoke_json_llm(prompt)
         if isinstance(parsed, dict) and "architecture" in parsed:
+            if isinstance(parsed["architecture"], dict):
+                parsed["architecture"] = "\n".join(f"{k}: {v}" for k, v in parsed["architecture"].items())
             return parsed
 
         domain = goal.strip().rstrip(".")

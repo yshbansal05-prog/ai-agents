@@ -18,28 +18,46 @@ Your task is to take the CTO's technical architecture and design actual code del
     dependencies=["Strategy / CTO Agent"]
 )
 
+from typing import Dict, Any, Optional
+
 class DevAgent(BaseAgent):
     def __init__(self):
         super().__init__(DEV_SPEC)
 
-    async def execute_development(self, goal: str, cto_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_development(
+        self,
+        goal: str,
+        cto_data: Dict[str, Any],
+        decision_data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        decision_context = ""
+        if decision_data and "decision" in decision_data:
+            decision_context = f"""
+Executive CEO Conflict Ruling to Implement:
+- Title: {decision_data.get('title', 'Architecture vs Velocity')}
+- Binding Decision: {decision_data.get('decision')}
+- Strategic Rationale: {decision_data.get('rationale')}
+Ensure database schemas and API endpoints strictly adhere to this executive ruling.
+"""
+
         prompt = f"""
 Company Goal: '{goal}'
 CTO Architecture Spec: {json.dumps(cto_data)}
+{decision_context}
 
-Generate the core technical implementation deliverables for this platform:
-1. SQL DDL for PostgreSQL database schema
-2. Key REST API endpoints
-3. Implementation controller code snippet (e.g. Python FastAPI)
-4. Feasibility assessment
+Generate the core technical implementation deliverables for this platform adhering to the CEO ruling:
+1. SQL DDL for PostgreSQL database schema (2-3 essential tables)
+2. 3-4 REST API endpoints
+3. Implementation controller code snippet (Python FastAPI)
+4. Feasibility assessment incorporating the CEO's conflict resolution decision
 
 Respond in valid JSON format matching this schema:
 {{
   "schema_summary": "Summary of relational tables, vector columns, and foreign keys created",
-  "sql_ddl": "-- Complete SQL DDL statements for PostgreSQL / SQLite",
-  "api_spec": ["METHOD /endpoint/path - Description", "METHOD /endpoint/path - Description"],
-  "code_deliverable": "# Working controller or service code snippet",
-  "feasibility_assessment": "Feasibility review and engineering timeline"
+  "sql_ddl": "-- Complete SQL DDL statements for PostgreSQL",
+  "api_spec": ["METHOD /endpoint/path - Description"],
+  "code_deliverable": "# Working controller code snippet",
+  "feasibility_assessment": "Feasibility review and engineering timeline reflecting CEO decision"
 }}
 """
         parsed = await self.invoke_json_llm(prompt)
@@ -48,7 +66,10 @@ Respond in valid JSON format matching this schema:
 
         # Safe domain slug for tables
         domain_clean = "".join(c if c.isalnum() else "_" for c in goal.lower()).strip("_")[:20]
+        decision_ruling_note = decision_data.get("decision", "Adopt modular architecture balancing data integrity with velocity") if decision_data else "Modular monolith architecture"
+        
         schema_ddl = f"""-- PostgreSQL Schema DDL for {goal}
+-- Aligned with CEO Ruling: {decision_ruling_note[:80]}
 CREATE TABLE IF NOT EXISTS {domain_clean}_entities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
@@ -70,6 +91,7 @@ CREATE INDEX IF NOT EXISTS idx_{domain_clean}_status ON {domain_clean}_entities(
 """
 
         code_snippet = f"""# FastAPI Controller for {domain_clean}
+# Implements CEO Decision: {decision_ruling_note[:80]}
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Dict, Any, List
@@ -83,23 +105,24 @@ class WorkflowRequest(BaseModel):
 
 @router.post("/execute")
 async def execute_workflow(req: WorkflowRequest):
-    # Core orchestration logic for {goal}
+    # Core orchestration logic reflecting CEO decision
     return {{
         "status": "SUCCESS",
         "message": f"Processed {{req.title}} successfully",
-        "score": 96.5
+        "decision_enforced": "{decision_ruling_note[:60]}",
+        "score": 98.0
     }}
 """
 
         return {
-            "schema_summary": f"Created relational PostgreSQL schema with tables '{domain_clean}_entities' and '{domain_clean}_executions' with foreign key relationships and index optimization.",
+            "schema_summary": f"Created relational PostgreSQL schema for '{domain_clean}' with tables '{domain_clean}_entities' and '{domain_clean}_executions' enforcing CEO decision: {decision_ruling_note[:60]}.",
             "sql_ddl": schema_ddl,
             "api_spec": [
-                f"POST /api/v1/{domain_clean}/create",
-                f"GET /api/v1/{domain_clean}/list",
-                f"POST /api/v1/{domain_clean}/execute",
-                f"GET /api/v1/{domain_clean}/:id/analytics"
+                f"POST /api/v1/{domain_clean}/create - Create entity",
+                f"GET /api/v1/{domain_clean}/list - List active records",
+                f"POST /api/v1/{domain_clean}/execute - Execute pipeline",
+                f"GET /api/v1/{domain_clean}/:id/status - Status check"
             ],
             "code_deliverable": code_snippet,
-            "feasibility_assessment": "100% Feasible for MVP delivery using modern FastAPI and PostgreSQL stack."
+            "feasibility_assessment": f"Feasible: Aligned with CEO decision ({decision_ruling_note[:60]})."
         }

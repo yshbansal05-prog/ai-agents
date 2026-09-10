@@ -1,18 +1,26 @@
 import { Company, Agent, Task, Memory, Decision, ActivityLog, Message } from '@/types';
 
+// Helper to normalize the API base URL with the company route prefix
+function normalizeApiUrl(url?: string): string {
+  const base = (url || 'http://localhost:8000/api/company').replace(/\/$/, '');
+  if (!base.includes('/api/company')) {
+    return `${base}/api/company`;
+  }
+  return base;
+}
+
 // Default API base URL from environment or local fallback
-export const DEFAULT_API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/company';
+export const DEFAULT_API_BASE = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
 
 export class ApiService {
   private baseUrl: string;
 
   constructor(baseUrl: string = DEFAULT_API_BASE) {
-    this.baseUrl = baseUrl.replace(/\/$/, '');
+    this.baseUrl = normalizeApiUrl(baseUrl);
   }
 
   setBaseUrl(url: string) {
-    this.baseUrl = url.replace(/\/$/, '');
+    this.baseUrl = normalizeApiUrl(url);
   }
 
   getBaseUrl(): string {
@@ -116,7 +124,16 @@ export class ApiService {
     return await res.json();
   }
 
-  // 11. SSE events endpoint URL
+  // 11. Fetch treasury posture & transactions
+  async getTreasury(companyId: string): Promise<any> {
+    const res = await fetch(`${this.baseUrl}/${companyId}/treasury`);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch treasury: ${res.statusText}`);
+    }
+    return await res.json();
+  }
+
+  // 12. SSE events endpoint URL
   getEventsUrl(companyId: string): string {
     return `${this.baseUrl}/${companyId}/events`;
   }

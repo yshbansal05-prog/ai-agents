@@ -1,10 +1,11 @@
+import os
 import json
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.database import (
-    MemoryModel, DecisionModel, ActivityLogModel, TaskModel, AgentModel, MessageModel
+    MemoryModel, DecisionModel, ActivityLogModel, TaskModel, AgentModel, MessageModel, TreasuryTransactionModel
 )
 from app.services.event_manager import event_manager
 
@@ -193,13 +194,31 @@ class CompanyMemoryManager:
             all_tasks_res = await db.execute(
                 select(TaskModel).where(TaskModel.company_id == company_id)
             )
-            for t in all_tasks_res.scalars().all():
+            all_tasks = all_tasks_res.scalars().all()
+            for t in all_tasks:
                 if (
                     task_title.lower() in t.title.lower()
                     or t.title.lower() in task_title.lower()
                 ):
                     task = t
                     break
+
+            # If not matched by title, search by assigned_agent or role keyword
+            if not task:
+                for t in all_tasks:
+                    agent_str = (t.assigned_agent or "").lower()
+                    target = task_title.lower()
+                    if (
+                        target in agent_str
+                        or agent_str in target
+                        or ("market" in target and "market" in agent_str)
+                        or ("cto" in target and ("cto" in agent_str or "architect" in agent_str))
+                        or ("dev" in target and ("dev" in agent_str or "software" in agent_str or "engineer" in agent_str))
+                        or ("research" in target and "research" in agent_str)
+                        or ("ceo" in target and "ceo" in agent_str)
+                    ):
+                        task = t
+                        break
 
         if task:
             task.status = status
@@ -302,4 +321,160 @@ class CompanyMemoryManager:
 
         scored_memories.sort(key=lambda x: x[0], reverse=True)
         return [item[1] for item in scored_memories[:limit]]
+
+    @staticmethod
+    async def record_treasury_transaction(
+        db: AsyncSession,
+        company_id: str,
+        agent_name: str,
+        service: str,
+        amount: float,
+        recipient: str,
+        purpose: str,
+        status: str = "REQUESTED",
+        network: str = "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=",
+        currency: str = "USDC",
+        facilitator: str = "GoPlausible",
+        tx_hash: str = "",
+        metadata_json: Optional[Dict[str, Any]] = None
+    ) -> TreasuryTransactionModel:
+        """Persists a new autonomous treasury expenditure."""
+        tx = TreasuryTransactionModel(
+            company_id=company_id,
+            agent_name=agent_name,
+            service=service,
+            amount=amount,
+            currency=currency,
+            network=network,
+            recipient=recipient,
+            purpose=purpose,
+            status=status,
+            tx_hash=tx_hash,
+            facilitator=facilitator,
+            metadata_json=metadata_json or {}
+        )
+        if status == "SETTLED":
+            tx.settled_at = datetime.now(timezone.utc)
+        db.add(tx)
+        await db.commit()
+        await db.refresh(tx)
+
+        # Broadcast SSE event
+        event_name = f"payment_{status.lower()}" if status.lower() in ["requested", "approved", "pending", "settled", "failed"] else "payment_update"
+        await event_manager.broadcast(
+            company_id,
+            event_name,
+            {
+                "id": tx.id,
+                "agent": tx.agent_name,
+                "service": tx.service,
+                "amount": f"{tx.amount:.2f}",
+                "currency": tx.currency,
+                "network": tx.network,
+                "recipient": tx.recipient,
+                "purpose": tx.purpose,
+                "status": tx.status,
+                "tx_hash": tx.tx_hash,
+                "facilitator": tx.facilitator,
+                "explorer_url": f"https://lora.algokit.io/testnet/transaction/{tx.tx_hash}" if tx.tx_hash else "",
+                "created_at": tx.created_at.isoformat() if tx.created_at else None
+            }
+        )
+        return tx
+
+    @staticmethod
+    async def update_treasury_transaction(
+        db: AsyncSession,
+        tx_id: str,
+        status: str,
+        tx_hash: Optional[str] = None,
+        metadata_json: Optional[Dict[str, Any]] = None
+    ) -> Optional[TreasuryTransactionModel]:
+        """Updates an existing treasury transaction with settlement status and tx hash."""
+        tx = await db.get(TreasuryTransactionModel, tx_id)
+        if not tx:
+            return None
+        tx.status = status
+        if tx_hash:
+            tx.tx_hash = tx_hash
+        if status == "SETTLED":
+            tx.settled_at = datetime.now(timezone.utc)
+        if metadata_json:
+            tx.metadata_json = {**(tx.metadata_json or {}), **metadata_json}
+        await db.commit()
+        await db.refresh(tx)
+
+        event_name = f"payment_{status.lower()}" if status.lower() in ["approved", "pending", "settled", "failed"] else "payment_update"
+        await event_manager.broadcast(
+            tx.company_id,
+            event_name,
+            {
+                "id": tx.id,
+                "agent": tx.agent_name,
+                "service": tx.service,
+                "amount": f"{tx.amount:.2f}",
+                "currency": tx.currency,
+                "network": tx.network,
+                "status": tx.status,
+                "tx_hash": tx.tx_hash,
+                "facilitator": tx.facilitator,
+                "explorer_url": f"https://lora.algokit.io/testnet/transaction/{tx.tx_hash}" if tx.tx_hash else "",
+                "settled_at": tx.settled_at.isoformat() if tx.settled_at else None
+            }
+        )
+        return tx
+
+    @staticmethod
+    async def get_treasury_transactions(
+        db: AsyncSession,
+        company_id: str
+    ) -> List[Dict[str, Any]]:
+        """Retrieves all treasury expenditures for a company."""
+        result = await db.execute(
+            select(TreasuryTransactionModel)
+            .where(TreasuryTransactionModel.company_id == company_id)
+            .order_by(TreasuryTransactionModel.created_at.desc())
+        )
+        txs = result.scalars().all()
+        return [
+            {
+                "id": t.id,
+                "company_id": t.company_id,
+                "agent_name": t.agent_name,
+                "service": t.service,
+                "amount": t.amount,
+                "currency": t.currency,
+                "network": t.network,
+                "recipient": t.recipient,
+                "purpose": t.purpose,
+                "status": t.status,
+                "tx_hash": t.tx_hash,
+                "facilitator": t.facilitator,
+                "explorer_url": f"https://lora.algokit.io/testnet/transaction/{t.tx_hash}" if t.tx_hash else "",
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+                "settled_at": t.settled_at.isoformat() if t.settled_at else None,
+                "metadata_json": t.metadata_json or {}
+            }
+            for t in txs
+        ]
+
+    @staticmethod
+    async def get_treasury_summary(
+        db: AsyncSession,
+        company_id: str
+    ) -> Dict[str, Any]:
+        """Calculates total spend, counts, and returns full treasury posture."""
+        txs = await CompanyMemoryManager.get_treasury_transactions(db, company_id)
+        settled_txs = [t for t in txs if t["status"] == "SETTLED"]
+        total_spent = sum(t["amount"] for t in settled_txs)
+        return {
+            "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=",
+            "currency": "USDC",
+            "total_spent": round(total_spent, 4),
+            "transaction_count": len(txs),
+            "settled_count": len(settled_txs),
+            "transactions": txs,
+            "wallet_address": os.getenv("AVM_ADDRESS", "BJSAKUOZAQJGH2Y3LEPVVJY5HLKEPP6EI4XFNOZPBVE4VBVVCNZUB434CQ")
+        }
+
 

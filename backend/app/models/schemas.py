@@ -92,7 +92,35 @@ class CompanyResponse(BaseModel):
     created_at: Optional[datetime] = None
 
 class EventPayload(BaseModel):
-    event_type: str  # agent_status, task_status, activity_log, memory_added, conflict_detected, decision_made, report_completed
+    event_type: str  # agent_status, task_status, activity_log, memory_added, conflict_detected, decision_made, report_completed, payment_settled
     company_id: str
     timestamp: str
     data: Dict[str, Any]
+
+class TreasuryTransactionSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    company_id: str
+    agent_name: str
+    service: str
+    amount: float
+    currency: str = "USDC"
+    network: str
+    recipient: str
+    purpose: str
+    status: str
+    tx_hash: str = ""
+    facilitator: str = "GoPlausible"
+    created_at: Optional[datetime] = None
+    settled_at: Optional[datetime] = None
+    metadata_json: Dict[str, Any] = {}
+
+class TreasurySummarySchema(BaseModel):
+    network: str
+    currency: str = "USDC"
+    total_spent: float
+    transaction_count: int
+    transactions: List[TreasuryTransactionSchema] = []
+    wallet_address: str
+

@@ -204,6 +204,11 @@ async def search_memory(company_id: str, q: str = "", limit: int = 5, db: AsyncS
     """Searches memory artifacts using relevance ranking."""
     return await CompanyMemoryManager.search_memories(db, company_id, query=q, limit=limit)
 
+@router.get("/{company_id}/treasury")
+async def get_treasury(company_id: str, db: AsyncSession = Depends(get_db)):
+    """Retrieves autonomous treasury expenditures and on-chain posture."""
+    return await CompanyMemoryManager.get_treasury_summary(db, company_id)
+
 @router.get("/{company_id}/events")
 async def sse_events(company_id: str, request: Request):
     """Server-Sent Events endpoint for real-time frontend streaming updates."""

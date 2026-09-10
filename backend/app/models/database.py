@@ -1,7 +1,7 @@
 import os
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, JSON, Float
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
@@ -22,6 +22,8 @@ class CompanyModel(Base):
     memories = relationship("MemoryModel", back_populates="company", cascade="all, delete-orphan")
     decisions = relationship("DecisionModel", back_populates="company", cascade="all, delete-orphan")
     logs = relationship("ActivityLogModel", back_populates="company", cascade="all, delete-orphan")
+    treasury_transactions = relationship("TreasuryTransactionModel", back_populates="company", cascade="all, delete-orphan")
+
 
 class AgentModel(Base):
     __tablename__ = "agents"
@@ -105,6 +107,27 @@ class ActivityLogModel(Base):
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     company = relationship("CompanyModel", back_populates="logs")
+
+class TreasuryTransactionModel(Base):
+    __tablename__ = "treasury_transactions"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    company_id = Column(String, ForeignKey("companies.id"), nullable=False)
+    agent_name = Column(String, nullable=False)
+    service = Column(String, nullable=False)
+    amount = Column(Float, nullable=False)
+    currency = Column(String, default="USDC")
+    network = Column(String, default="algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=")
+    recipient = Column(String, nullable=False)
+    purpose = Column(Text, nullable=False)
+    status = Column(String, default="REQUESTED")  # REQUESTED, APPROVED, PAYMENT_PENDING, SETTLED, REJECTED, FAILED
+    tx_hash = Column(String, default="")
+    facilitator = Column(String, default="GoPlausible")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    settled_at = Column(DateTime, nullable=True)
+    metadata_json = Column(JSON, default=dict)
+
+    company = relationship("CompanyModel", back_populates="treasury_transactions")
 
 # Database connection setup
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./ai_org.db")

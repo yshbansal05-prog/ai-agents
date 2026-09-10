@@ -1,10 +1,16 @@
 import os
 import logging
+from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from typing import Dict, Any
-from dotenv import load_dotenv
-
-load_dotenv()
+backend_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+root_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
+if os.path.exists(backend_env):
+    load_dotenv(backend_env)
+elif os.path.exists(root_env):
+    load_dotenv(root_env)
+else:
+    load_dotenv()
 
 # Configure structured logging
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()

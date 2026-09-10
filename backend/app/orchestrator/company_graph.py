@@ -12,6 +12,7 @@ from app.agents.marketing_agent import MarketingAgent
 from app.agents.dev_agent import DevAgent
 from app.memory.company_memory import CompanyMemoryManager
 from app.models.database import AsyncSessionLocal, CompanyModel, TaskModel
+from app.services.treasury_service import TreasuryService
 
 logger = logging.getLogger(__name__)
 
@@ -46,17 +47,17 @@ class CompanyOrchestrator:
         workflow.add_node("research_node", self._node_research)
         workflow.add_node("cto_node", self._node_cto)
         workflow.add_node("marketing_node", self._node_marketing)
-        workflow.add_node("dev_node", self._node_dev)
         workflow.add_node("conflict_node", self._node_conflict)
+        workflow.add_node("dev_node", self._node_dev)
         workflow.add_node("report_node", self._node_report)
 
         workflow.add_edge(START, "ceo_decompose")
         workflow.add_edge("ceo_decompose", "research_node")
         workflow.add_edge("research_node", "cto_node")
         workflow.add_edge("cto_node", "marketing_node")
-        workflow.add_edge("marketing_node", "dev_node")
-        workflow.add_edge("dev_node", "conflict_node")
-        workflow.add_edge("conflict_node", "report_node")
+        workflow.add_edge("marketing_node", "conflict_node")
+        workflow.add_edge("conflict_node", "dev_node")
+        workflow.add_edge("dev_node", "report_node")
         workflow.add_edge("report_node", END)
 
         return workflow.compile()
@@ -131,25 +132,39 @@ class CompanyOrchestrator:
                 db, company_id, "Research Agent", "WORKING", "Conducting market, competitor & user research"
             )
             await CompanyMemoryManager.update_task_status(
-                db, company_id, "Research", "RUNNING"
+                db, company_id, "Research Agent", "RUNNING"
             )
             await CompanyMemoryManager.log_activity(
                 db, company_id, "Research Agent", "Started market, competitor & user research...", "INFO"
             )
 
-            research_res = await self.research.execute_research(goal)
+            # Autonomous x402 Payment Flow for Premium Market Intelligence (Phase 9)
+            paid_intel_res = await TreasuryService.purchase_paid_resource(
+                db=db,
+                company_id=company_id,
+                agent_name="Research Agent",
+                service_name="Premium Market Intelligence",
+                amount=0.01,
+                domain=goal
+            )
+            paid_data = paid_intel_res.get("data") if paid_intel_res.get("success") else None
+
+            research_res = await self.research.execute_research(goal, paid_intelligence=paid_data)
 
             await CompanyMemoryManager.add_memory(
                 db, company_id, "Research Agent", "RESEARCH_FINDINGS", research_res, category="RESEARCH"
             )
             await CompanyMemoryManager.update_task_status(
-                db, company_id, "Research", "COMPLETED", json.dumps(research_res.get("summary", "Research complete"))
+                db, company_id, "Research Agent", "COMPLETED", json.dumps(research_res.get("summary", "Research complete"))
             )
             await CompanyMemoryManager.update_agent_status(
                 db, company_id, "Research Agent", "COMPLETED", "Research analysis complete"
             )
+            model_info = self.research.last_model or self.research.provider
             await CompanyMemoryManager.log_activity(
-                db, company_id, "Research Agent", "Completed market research and stored findings in shared memory.", "SUCCESS"
+                db, company_id, "Research Agent",
+                f"Completed market research [{self.research.last_execution_type}: {self.research.last_latency}s | {model_info}].",
+                "SUCCESS"
             )
 
             # Inter-agent message from Research to CTO and Marketing
@@ -157,7 +172,7 @@ class CompanyOrchestrator:
                 db, company_id,
                 sender_agent="Research Agent",
                 recipient_agent="Strategy / CTO Agent",
-                content=f"Market research completed: {research_res.get('summary', '')[:140]}",
+                content=f"Market research completed: {str(research_res.get('summary', ''))[:140]}",
                 type="DATA_HANDOFF"
             )
 
@@ -174,7 +189,7 @@ class CompanyOrchestrator:
                 db, company_id, "Strategy / CTO Agent", "WORKING", "Designing system architecture & technical stack"
             )
             await CompanyMemoryManager.update_task_status(
-                db, company_id, "Technical Architecture", "RUNNING"
+                db, company_id, "Strategy / CTO Agent", "RUNNING"
             )
             await CompanyMemoryManager.log_activity(
                 db, company_id, "Strategy / CTO Agent", "Retrieved Research findings from shared memory; architecting system...", "INFO"
@@ -186,21 +201,24 @@ class CompanyOrchestrator:
                 db, company_id, "Strategy / CTO Agent", "CTO_ARCHITECTURE", cto_res, category="ARCHITECTURE"
             )
             await CompanyMemoryManager.update_task_status(
-                db, company_id, "Technical Architecture", "COMPLETED", json.dumps(cto_res.get("architecture", "Architecture complete"))
+                db, company_id, "Strategy / CTO Agent", "COMPLETED", json.dumps(cto_res.get("architecture", "Architecture complete"))
             )
             await CompanyMemoryManager.update_agent_status(
                 db, company_id, "Strategy / CTO Agent", "COMPLETED", "Technical architecture complete"
             )
+            model_info = self.cto.last_model or self.cto.provider
             await CompanyMemoryManager.log_activity(
-                db, company_id, "Strategy / CTO Agent", "Completed system architecture & technical roadmap.", "SUCCESS"
+                db, company_id, "Strategy / CTO Agent",
+                f"Completed system architecture & roadmap [{self.cto.last_execution_type}: {self.cto.last_latency}s | {model_info}].",
+                "SUCCESS"
             )
 
-            # Inter-agent message from CTO to Dev Agent
+            # Inter-agent message from CTO to Marketing and Executive Squad
             await CompanyMemoryManager.add_message(
                 db, company_id,
                 sender_agent="Strategy / CTO Agent",
-                recipient_agent="Development Agent",
-                content="Architecture specifications ready. Proceed with database DDL models and REST API contracts.",
+                recipient_agent="Marketing Agent",
+                content="Architecture specifications ready. Coordinating technical roadmap with go-to-market priorities.",
                 type="SPECIFICATION"
             )
 
@@ -217,7 +235,7 @@ class CompanyOrchestrator:
                 db, company_id, "Marketing Agent", "WORKING", "Defining brand positioning & go-to-market strategy"
             )
             await CompanyMemoryManager.update_task_status(
-                db, company_id, "Marketing", "RUNNING"
+                db, company_id, "Marketing Agent", "RUNNING"
             )
             await CompanyMemoryManager.log_activity(
                 db, company_id, "Marketing Agent", "Analyzing goal & research context; formulating GTM plan...", "INFO"
@@ -229,13 +247,16 @@ class CompanyOrchestrator:
                 db, company_id, "Marketing Agent", "MARKETING_STRATEGY", mkt_res, category="MARKETING"
             )
             await CompanyMemoryManager.update_task_status(
-                db, company_id, "Marketing", "COMPLETED", json.dumps(mkt_res.get("value_prop", "GTM strategy complete"))
+                db, company_id, "Marketing Agent", "COMPLETED", json.dumps(mkt_res.get("value_prop", "GTM strategy complete"))
             )
             await CompanyMemoryManager.update_agent_status(
                 db, company_id, "Marketing Agent", "COMPLETED", "Marketing strategy complete"
             )
+            model_info = self.marketing.last_model or self.marketing.provider
             await CompanyMemoryManager.log_activity(
-                db, company_id, "Marketing Agent", "Completed value proposition & positioning framework.", "SUCCESS"
+                db, company_id, "Marketing Agent",
+                f"Completed value proposition & positioning [{self.marketing.last_execution_type}: {self.marketing.last_latency}s | {model_info}].",
+                "SUCCESS"
             )
 
             # Inter-agent message from Marketing to CEO
@@ -243,55 +264,12 @@ class CompanyOrchestrator:
                 db, company_id,
                 sender_agent="Marketing Agent",
                 recipient_agent="CEO / Orchestrator Agent",
-                content=f"GTM playbook finalized. Recommends aggressive beta launch: {mkt_res.get('value_prop', '')[:100]}",
+                content=f"GTM playbook finalized. Recommends aggressive beta launch: {str(mkt_res.get('value_prop', ''))[:100]}",
                 type="STRATEGY"
             )
 
         await asyncio.sleep(1.5)
         return {"marketing_output": mkt_res}
-
-    async def _node_dev(self, state: CompanyState) -> Dict[str, Any]:
-        company_id = state["company_id"]
-        goal = state["goal"]
-        cto_res = state.get("cto_output", {})
-
-        async with AsyncSessionLocal() as db:
-            await CompanyMemoryManager.update_agent_status(
-                db, company_id, "Development Agent", "WORKING", "Generating code artifacts & database DDL schema"
-            )
-            await CompanyMemoryManager.update_task_status(
-                db, company_id, "Implementation", "RUNNING"
-            )
-            await CompanyMemoryManager.log_activity(
-                db, company_id, "Development Agent", "Converting CTO blueprint into SQL DDL and API code snippets...", "INFO"
-            )
-
-            dev_res = await self.dev.execute_development(goal, cto_res)
-
-            await CompanyMemoryManager.add_memory(
-                db, company_id, "Development Agent", "DEV_CODE_ARTIFACTS", dev_res, category="CODE"
-            )
-            await CompanyMemoryManager.update_task_status(
-                db, company_id, "Implementation", "COMPLETED", dev_res.get("schema_summary", "Generated SQL DDL and API Endpoints")
-            )
-            await CompanyMemoryManager.update_agent_status(
-                db, company_id, "Development Agent", "COMPLETED", "Code generation complete"
-            )
-            await CompanyMemoryManager.log_activity(
-                db, company_id, "Development Agent", "Generated core database DDL and API implementation code.", "SUCCESS"
-            )
-
-            # Inter-agent message from Dev to CTO
-            await CompanyMemoryManager.add_message(
-                db, company_id,
-                sender_agent="Development Agent",
-                recipient_agent="Strategy / CTO Agent",
-                content="PostgreSQL DDL schema and API controller endpoints generated and validated.",
-                type="STATUS"
-            )
-
-        await asyncio.sleep(1.5)
-        return {"dev_output": dev_res}
 
     async def _node_conflict(self, state: CompanyState) -> Dict[str, Any]:
         company_id = state["company_id"]
@@ -317,22 +295,74 @@ class CompanyOrchestrator:
                 made_by="CEO / Orchestrator Agent",
                 context=decision_res.get("context", {})
             )
+            model_info = self.ceo.last_model or self.ceo.provider
             await CompanyMemoryManager.log_activity(
                 db, company_id, "CEO / Orchestrator Agent",
-                f"CEO DECISION BINDING: {decision_res['decision']}", "SUCCESS"
+                f"CEO DECISION BINDING [{self.ceo.last_execution_type}: {self.ceo.last_latency}s | {model_info}]: {decision_res['decision']}",
+                "SUCCESS"
             )
 
-            # Inter-agent arbitration message
+            # Inter-agent arbitration message dispatched to Dev and Executive Squad
             await CompanyMemoryManager.add_message(
                 db, company_id,
                 sender_agent="CEO / Orchestrator Agent",
-                recipient_agent="Executive Squad",
-                content=f"Executive Ruling on '{decision_res['title']}': {decision_res['decision']}",
+                recipient_agent="Development Agent",
+                content=f"Executive Ruling on '{decision_res['title']}': {decision_res['decision']}. Proceed with implementation adhering to this decision.",
                 type="DECISION"
             )
 
         await asyncio.sleep(1.5)
         return {"decision_output": decision_res}
+
+    async def _node_dev(self, state: CompanyState) -> Dict[str, Any]:
+        company_id = state["company_id"]
+        goal = state["goal"]
+        cto_res = state.get("cto_output", {})
+        decision_res = state.get("decision_output", {})
+
+        async with AsyncSessionLocal() as db:
+            await CompanyMemoryManager.update_agent_status(
+                db, company_id, "Development Agent", "WORKING", "Generating code artifacts aligned with CEO conflict ruling"
+            )
+            await CompanyMemoryManager.update_task_status(
+                db, company_id, "Development Agent", "RUNNING"
+            )
+            decision_note = decision_res.get("decision", "Modular architecture")[:60]
+            await CompanyMemoryManager.log_activity(
+                db, company_id, "Development Agent",
+                f"Converting CTO blueprint into implementation adhering to CEO ruling: '{decision_note}'...",
+                "INFO"
+            )
+
+            dev_res = await self.dev.execute_development(goal, cto_res, decision_res)
+
+            await CompanyMemoryManager.add_memory(
+                db, company_id, "Development Agent", "DEV_CODE_ARTIFACTS", dev_res, category="CODE"
+            )
+            await CompanyMemoryManager.update_task_status(
+                db, company_id, "Development Agent", "COMPLETED", dev_res.get("schema_summary", "Generated SQL DDL and API Endpoints")
+            )
+            await CompanyMemoryManager.update_agent_status(
+                db, company_id, "Development Agent", "COMPLETED", "Code generation complete"
+            )
+            model_info = self.dev.last_model or self.dev.provider
+            await CompanyMemoryManager.log_activity(
+                db, company_id, "Development Agent",
+                f"Generated database DDL and API implementation code [{self.dev.last_execution_type}: {self.dev.last_latency}s | {model_info}] adhering to CEO ruling.",
+                "SUCCESS"
+            )
+
+            # Inter-agent message from Dev to CTO
+            await CompanyMemoryManager.add_message(
+                db, company_id,
+                sender_agent="Development Agent",
+                recipient_agent="Strategy / CTO Agent",
+                content=f"PostgreSQL DDL schema and API endpoints generated implementing CEO ruling: {decision_note}.",
+                type="STATUS"
+            )
+
+        await asyncio.sleep(1.5)
+        return {"dev_output": dev_res}
 
     async def _node_report(self, state: CompanyState) -> Dict[str, Any]:
         company_id = state["company_id"]
@@ -366,9 +396,15 @@ class CompanyOrchestrator:
             await CompanyMemoryManager.update_agent_status(
                 db, company_id, "CEO / Orchestrator Agent", "COMPLETED", "Final Company Organization Plan Completed"
             )
+            model_info = self.ceo.last_model or self.ceo.provider
             await CompanyMemoryManager.log_activity(
                 db, company_id, "CEO / Orchestrator Agent",
-                "🎉 ORGANIZATION EXECUTION COMPLETED SUCCESSFULLY!", "SUCCESS"
+                f"Compiled executive deliverable report [{self.ceo.last_execution_type}: {self.ceo.last_latency}s | {model_info}].",
+                "SUCCESS"
+            )
+            await CompanyMemoryManager.log_activity(
+                db, company_id, "CEO / Orchestrator Agent",
+                "ORGANIZATION EXECUTION COMPLETED SUCCESSFULLY!", "SUCCESS"
             )
 
         return {"final_report": final_report_md, "status": "COMPLETED"}

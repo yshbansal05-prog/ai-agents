@@ -65,3 +65,33 @@ export interface Company {
   final_report?: string;
   created_at?: string;
 }
+
+export interface TreasuryTransaction {
+  id: string;
+  company_id: string;
+  agent_name: string;
+  service: string;
+  amount: number;
+  currency: string;
+  network: string;
+  recipient: string;
+  purpose: string;
+  status: 'REQUESTED' | 'APPROVED' | 'PAYMENT_PENDING' | 'SETTLED' | 'REJECTED' | 'FAILED';
+  tx_hash: string;
+  facilitator: string;
+  explorer_url: string;
+  created_at?: string;
+  settled_at?: string;
+  metadata_json?: Record<string, any>;
+}
+
+export interface TreasurySummary {
+  network: string;
+  currency: string;
+  total_spent: number;
+  transaction_count: number;
+  settled_count: number;
+  transactions: TreasuryTransaction[];
+  wallet_address: string;
+}
+

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Agent, Task, Memory, Decision, ActivityLog, Company } from '@/types';
+import { Agent, Task, Memory, Decision, ActivityLog, Company, TreasurySummary } from '@/types';
 import PixelOffice from '@/components/PixelOffice';
 import CommandCenter from '@/components/CommandCenter';
 import AgentDock from '@/components/AgentDock';
@@ -11,6 +11,7 @@ import ActivityFeed from '@/components/ActivityFeed';
 import CompanyMemoryView from '@/components/CompanyMemoryView';
 import ConflictsView from '@/components/ConflictsView';
 import FinalReportView from '@/components/FinalReportView';
+import TreasuryPanel from '@/components/TreasuryPanel';
 import DiagramBoardModal from '@/components/DiagramBoardModal';
 import MemoryCoreModal from '@/components/MemoryCoreModal';
 import StatsModal from '@/components/StatsModal';
@@ -37,7 +38,8 @@ import {
   Activity,
   Database,
   Zap,
-  FileText
+  FileText,
+  Coins
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -48,9 +50,10 @@ export default function Dashboard() {
   const [memories, setMemories] = useState<Memory[]>(INITIAL_MEMORIES);
   const [decisions, setDecisions] = useState<Decision[]>(INITIAL_DECISIONS);
   const [logs, setLogs] = useState<ActivityLog[]>(INITIAL_LOGS);
+  const [treasury, setTreasury] = useState<TreasurySummary | null>(null);
 
   const [viewMode, setViewMode] = useState<'PIXEL_OFFICE' | 'GRAPH'>('PIXEL_OFFICE');
-  const [activeTab, setActiveTab] = useState<'GRAPH' | 'ACTIVITY' | 'MEMORY' | 'CONFLICTS' | 'REPORT'>('GRAPH');
+  const [activeTab, setActiveTab] = useState<'GRAPH' | 'ACTIVITY' | 'MEMORY' | 'CONFLICTS' | 'REPORT' | 'TREASURY'>('GRAPH');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
@@ -89,6 +92,7 @@ export default function Dashboard() {
     setMemories(INITIAL_MEMORIES);
     setDecisions(INITIAL_DECISIONS);
     setLogs(INITIAL_LOGS);
+    setTreasury(null);
     setIsRunning(false);
     setIsPaused(false);
     setSelectedAgent(null);
@@ -177,10 +181,87 @@ export default function Dashboard() {
           }
         } else if (data.event_type === 'decision_made') {
           setDecisions((prev) => [...prev, data.data]);
+        } else if (data.event_type === 'payment_requested') {
+          sound.playTick();
+          setLogs((prev) => [
+            ...prev,
+            {
+              id: `pay-${Date.now()}`,
+              agent_name: data.data.agent || 'Research Agent',
+              message: `💰 [TREASURY] Payment Requested: $${data.data.amount} ${data.data.currency} for "${data.data.service}"`,
+              level: 'INFO',
+              timestamp: new Date().toISOString()
+            }
+          ]);
+          api.getTreasury(companyId).then((t) => setTreasury(t)).catch(() => {});
+        } else if (data.event_type === 'payment_approved') {
+          sound.playTick();
+          setLogs((prev) => [
+            ...prev,
+            {
+              id: `pay-appr-${Date.now()}`,
+              agent_name: 'CEO',
+              message: `✓ [POLICY] Approved spending of $${data.data.amount} ${data.data.currency} for ${data.data.agent}`,
+              level: 'SUCCESS',
+              timestamp: new Date().toISOString()
+            }
+          ]);
+          api.getTreasury(companyId).then((t) => setTreasury(t)).catch(() => {});
+        } else if (data.event_type === 'payment_pending') {
+          sound.playTick();
+          setLogs((prev) => [
+            ...prev,
+            {
+              id: `pay-pend-${Date.now()}`,
+              agent_name: 'x402 Client',
+              message: `⚡ [x402] Transmitting signed AVM payment payload to GoPlausible Facilitator...`,
+              level: 'INFO',
+              timestamp: new Date().toISOString()
+            }
+          ]);
+        } else if (data.event_type === 'payment_settled') {
+          sound.playSuccess();
+          setLogs((prev) => [
+            ...prev,
+            {
+              id: `pay-settle-${Date.now()}`,
+              agent_name: 'Algorand Testnet',
+              message: `🔗 [x402 SETTLED] $${data.data.amount} ${data.data.currency} confirmed on Algorand Testnet via GoPlausible! Tx: ${
+                data.data.tx_hash ? data.data.tx_hash.slice(0, 16) + '...' : 'settled'
+              }`,
+              level: 'SUCCESS',
+              timestamp: new Date().toISOString()
+            }
+          ]);
+          api.getTreasury(companyId).then((t) => setTreasury(t)).catch(() => {});
+        } else if (data.event_type === 'payment_failed') {
+          setLogs((prev) => [
+            ...prev,
+            {
+              id: `pay-fail-${Date.now()}`,
+              agent_name: 'Treasury',
+              message: `⚠️ [x402] Payment failed: ${data.data.error || 'facilitator error'}`,
+              level: 'CONFLICT',
+              timestamp: new Date().toISOString()
+            }
+          ]);
+          api.getTreasury(companyId).then((t) => setTreasury(t)).catch(() => {});
         }
       };
 
-      const eventTypes = ['agent_status', 'task_status', 'activity_log', 'memory_added', 'decision_made', 'agent_message'];
+      const eventTypes = [
+        'agent_status',
+        'task_status',
+        'activity_log',
+        'memory_added',
+        'decision_made',
+        'agent_message',
+        'payment_requested',
+        'payment_approved',
+        'payment_pending',
+        'payment_settled',
+        'payment_failed'
+      ];
       eventTypes.forEach((evtType) => {
         sse.addEventListener(evtType, (evt: MessageEvent) => {
           try {
@@ -510,12 +591,32 @@ export default function Dashboard() {
     if (!goalToUse.trim() || isRunning) return;
 
     sound.playExecute();
+
+    // Reset transient execution state to prevent cross-run state pollution
+    clearSimulationTimers();
+    if (sseRef.current) sseRef.current.close();
+    setTasks([]);
+    setLogs([]);
+    setMemories([]);
+    setDecisions([]);
+    setTreasury(null);
+    setSelectedAgent(null);
+    setIsPaused(false);
+    setAgents((prev) =>
+      prev.map((a) => ({
+        ...a,
+        status: a.role.includes('CEO') ? 'WORKING' : 'WAITING',
+        current_task: a.role.includes('CEO') ? `Decomposing: "${goalToUse.slice(0, 32)}..."` : 'Awaiting task dispatch'
+      }))
+    );
+
     setIsRunning(true);
     setCompany({
       id: `comp-${Date.now()}`,
       name: 'AI ORG OS V1.0.0 - DEBUGGERS INC.',
       goal: goalToUse.trim(),
       status: 'IN_PROGRESS',
+      final_report: undefined,
       created_at: new Date().toISOString()
     });
 
@@ -647,6 +748,7 @@ export default function Dashboard() {
                   tasks={tasks}
                   decisions={decisions}
                   agents={agents}
+                  treasury={treasury}
                   reportContent={company.final_report || null}
                   companyGoal={company.goal || goalInput}
                   isPaused={isPaused}
@@ -674,7 +776,8 @@ export default function Dashboard() {
                 { id: 'ACTIVITY', label: 'Activity Feed', icon: Activity },
                 { id: 'MEMORY', label: 'Memory Core', icon: Database },
                 { id: 'CONFLICTS', label: 'Conflicts & Decisions', icon: Zap },
-                { id: 'REPORT', label: 'Final Report', icon: FileText }
+                { id: 'REPORT', label: 'Final Report', icon: FileText },
+                { id: 'TREASURY', label: 'Treasury (x402)', icon: Coins }
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -722,6 +825,12 @@ export default function Dashboard() {
                 reportContent={company.final_report || null}
                 companyGoal={company.goal || goalInput}
               />
+            )}
+
+            {activeTab === 'TREASURY' && (
+              <div className="bg-[#f9f3eb] border-2 border-[#2c2621] rounded-lg p-3">
+                <TreasuryPanel treasury={treasury} />
+              </div>
             )}
           </div>
         )}

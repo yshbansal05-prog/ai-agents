@@ -44,9 +44,11 @@ services:
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - NVIDIA_BASE_URL=${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
       - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
-      - NVIDIA_MODEL=${NVIDIA_MODEL:-meta/llama-3.1-70b-instruct}
+      - NVIDIA_MODEL=${NVIDIA_MODEL:-meta/llama-3.2-11b-vision-instruct}
+      - LLM_TIMEOUT=${LLM_TIMEOUT:-75.0}
       - LOCAL_LLM_URL=${LOCAL_LLM_URL:-http://localhost:11434/v1}
       - LOCAL_LLM_MODEL=${LOCAL_LLM_MODEL:-llama3.1}
+      - X402_SERVICE_URL=${X402_SERVICE_URL:-http://x402:8002}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,*}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - PORT=8000
@@ -58,7 +60,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 10s
     networks:
       - ai_org_network
 
@@ -75,7 +76,7 @@ services:
       backend:
         condition: service_healthy
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/company}
       - PORT=3000
       - HOSTNAME=0.0.0.0
     ports:
@@ -86,6 +87,28 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    networks:
+      - ai_org_network
+
+  # =========================================================
+  # 4. x402 AVM Protocol Service (Algorand Testnet & GoPlausible)
+  # =========================================================
+  x402:
+    build:
+      context: .
+      dockerfile: Dockerfile.x402
+    container_name: ai_org_x402
+    restart: unless-stopped
+    environment:
+      - X402_NETWORK=${X402_NETWORK:-algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=}
+      - AVM_ADDRESS=${AVM_ADDRESS:-BJSAKUOZAQJGH2Y3LEPVVJY5HLKEPP6EI4XFNOZPBVE4VBVVCNZUB434CQ}
+      - AVM_PRIVATE_KEY=${AVM_PRIVATE_KEY:-}
+      - X402_FACILITATOR_URL=${X402_FACILITATOR_URL:-https://facilitator.goplausible.xyz}
+      - ALGOD_TESTNET_URL=${ALGOD_TESTNET_URL:-https://testnet-api.algonode.cloud}
+      - USDC_TESTNET_ASA_ID=${USDC_TESTNET_ASA_ID:-10458941}
+      - PORT=8002
+    ports:
+      - "8002:8002"
     networks:
       - ai_org_network
 

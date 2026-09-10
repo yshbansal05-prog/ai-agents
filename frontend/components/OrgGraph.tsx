@@ -139,11 +139,11 @@ export default function OrgGraph({
         isSelected: selectedAgentId === ceoAgent?.id
       }
     },
-    // Level 2: Specialized Agents
+    // Level 2: Specialized Agents (Research, CTO, Marketing)
     {
       id: 'research',
       type: 'agentNode',
-      position: { x: 40, y: 160 },
+      position: { x: 60, y: 150 },
       data: {
         agent: researchAgent || { id: 'agent-research', name: 'Meera Iyer', role: 'Market Intel', status: 'WAITING', capabilities: [], dependencies: [] },
         isSelected: selectedAgentId === researchAgent?.id
@@ -152,7 +152,7 @@ export default function OrgGraph({
     {
       id: 'cto',
       type: 'agentNode',
-      position: { x: 250, y: 160 },
+      position: { x: 340, y: 150 },
       data: {
         agent: ctoAgent || { id: 'agent-cto', name: 'Rohan Verma', role: 'Tech Architecture', status: 'WAITING', capabilities: [], dependencies: [] },
         isSelected: selectedAgentId === ctoAgent?.id
@@ -161,26 +161,17 @@ export default function OrgGraph({
     {
       id: 'marketing',
       type: 'agentNode',
-      position: { x: 460, y: 160 },
+      position: { x: 620, y: 150 },
       data: {
         agent: marketingAgent || { id: 'agent-marketing', name: 'Isha Malhotra', role: 'GTM Strategy', status: 'WAITING', capabilities: [], dependencies: [] },
         isSelected: selectedAgentId === marketingAgent?.id
       }
     },
-    {
-      id: 'dev',
-      type: 'agentNode',
-      position: { x: 670, y: 160 },
-      data: {
-        agent: devAgent || { id: 'agent-dev', name: 'Kabir Singh', role: 'Unit Economics', status: 'WAITING', capabilities: [], dependencies: [] },
-        isSelected: selectedAgentId === devAgent?.id
-      }
-    },
-    // Level 3: Shared Memory Node
+    // Level 3: Shared Memory Core
     {
       id: 'memory',
       type: 'agentNode',
-      position: { x: 340, y: 300 },
+      position: { x: 340, y: 280 },
       data: {
         label: 'Shared Memory Core',
         sublabel: 'PostgreSQL Knowledge Layer',
@@ -194,11 +185,11 @@ export default function OrgGraph({
         }
       }
     },
-    // Level 4: CEO Conflict & Decision Node
+    // Level 4: CEO Conflict & Decision Node (Arbitrates CTO vs Marketing)
     {
       id: 'decision',
       type: 'agentNode',
-      position: { x: 340, y: 420 },
+      position: { x: 340, y: 400 },
       data: {
         label: 'Conflict Arbiter',
         sublabel: 'Resolution & Alignment',
@@ -212,11 +203,21 @@ export default function OrgGraph({
         }
       }
     },
-    // Level 5: Final Outcome Node
+    // Level 5: Development Agent (Implements CEO Conflict Ruling)
+    {
+      id: 'dev',
+      type: 'agentNode',
+      position: { x: 340, y: 520 },
+      data: {
+        agent: devAgent || { id: 'agent-dev', name: 'Kabir Singh', role: 'Lead Software Engineer', status: 'WAITING', capabilities: [], dependencies: [] },
+        isSelected: selectedAgentId === devAgent?.id
+      }
+    },
+    // Level 6: Final Outcome Node
     {
       id: 'outcome',
       type: 'agentNode',
-      position: { x: 340, y: 540 },
+      position: { x: 340, y: 640 },
       data: {
         label: 'Final Deliverable',
         sublabel: 'Consolidated Executive Report',
@@ -236,13 +237,12 @@ export default function OrgGraph({
     { id: 'e-ceo-research', source: 'ceo', target: 'research', style: { stroke: '#2c2621', strokeWidth: 2 } },
     { id: 'e-ceo-cto', source: 'ceo', target: 'cto', style: { stroke: '#2c2621', strokeWidth: 2 } },
     { id: 'e-ceo-marketing', source: 'ceo', target: 'marketing', style: { stroke: '#2c2621', strokeWidth: 2 } },
-    { id: 'e-cto-dev', source: 'cto', target: 'dev', style: { stroke: '#2c2621', strokeWidth: 2 } },
     { id: 'e-research-mem', source: 'research', target: 'memory', style: { stroke: '#2c2621', strokeWidth: 2 } },
     { id: 'e-cto-mem', source: 'cto', target: 'memory', style: { stroke: '#2c2621', strokeWidth: 2 } },
     { id: 'e-mkt-mem', source: 'marketing', target: 'memory', style: { stroke: '#2c2621', strokeWidth: 2 } },
-    { id: 'e-dev-mem', source: 'dev', target: 'memory', style: { stroke: '#2c2621', strokeWidth: 2 } },
     { id: 'e-mem-decision', source: 'memory', target: 'decision', style: { stroke: '#2c2621', strokeWidth: 2 } },
-    { id: 'e-decision-outcome', source: 'decision', target: 'outcome', style: { stroke: '#2c2621', strokeWidth: 2 } }
+    { id: 'e-decision-dev', source: 'decision', target: 'dev', style: { stroke: '#2c2621', strokeWidth: 2 } },
+    { id: 'e-dev-outcome', source: 'dev', target: 'outcome', style: { stroke: '#2c2621', strokeWidth: 2 } }
   ];
 
   return (

@@ -1,7 +1,7 @@
 import json
 import re
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from app.agents.base_agent import BaseAgent, AgentSpec
 from app.tools.search_tools import search_web
 
@@ -28,13 +28,17 @@ class ResearchAgent(BaseAgent):
     def __init__(self):
         super().__init__(RESEARCH_SPEC)
 
-    async def execute_research(self, goal: str) -> Dict[str, Any]:
+    async def execute_research(self, goal: str, paid_intelligence: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         search_results = search_web(f"{goal} market competitors trends", max_results=3)
+
+        paid_context = ""
+        if paid_intelligence:
+            paid_context = f"\nPremium Verified Market Intelligence (Purchased via x402 on Algorand Testnet): {json.dumps(paid_intelligence)}\n"
 
         prompt = f"""
 Goal to research: '{goal}'
 Live Web Search Results: {json.dumps(search_results)}
-
+{paid_context}
 Return a JSON object with:
 1. "summary": Concise research summary.
 2. "key_findings": Array of 3 bullet points with research findings.
@@ -46,6 +50,8 @@ Return a JSON object with:
         parsed = await self.invoke_json_llm(prompt)
         if isinstance(parsed, dict) and "summary" in parsed:
             parsed["raw_sources"] = search_results
+            if paid_intelligence:
+                parsed["x402_paid_intelligence"] = paid_intelligence
             return parsed
 
         domain_name = goal.strip().rstrip(".")

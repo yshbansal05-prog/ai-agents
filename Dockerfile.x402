@@ -1,0 +1,7 @@
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --omit=dev
+COPY x402_service/ ./x402_service/
+EXPOSE 8002
+CMD ["node", "x402_service/server.js"]

@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ActivityLog, Memory, Task, Decision, Agent } from '@/types';
+import { ActivityLog, Memory, Task, Decision, Agent, TreasurySummary } from '@/types';
 import { sound } from '@/utils/sound';
-import { Terminal, Pause, Play, Trash2, Activity, CheckSquare, Scale, BookOpen, Users, Sparkles, Send } from 'lucide-react';
+import { Terminal, Pause, Play, Trash2, Activity, CheckSquare, Scale, BookOpen, Users, Sparkles, Send, Coins } from 'lucide-react';
+import TreasuryPanel from './TreasuryPanel';
 
 interface CommandCenterProps {
   logs: ActivityLog[];
@@ -11,6 +12,7 @@ interface CommandCenterProps {
   tasks: Task[];
   decisions: Decision[];
   agents?: Agent[];
+  treasury?: TreasurySummary | null;
   reportContent: string | null;
   companyGoal: string;
   isPaused: boolean;
@@ -26,6 +28,7 @@ export default function CommandCenter({
   tasks,
   decisions,
   agents = [],
+  treasury,
   reportContent,
   isPaused,
   onTogglePause,
@@ -33,7 +36,7 @@ export default function CommandCenter({
   onSendPrompt,
   onSelectAgent
 }: CommandCenterProps) {
-  const [activeTab, setActiveTab] = useState<'ACTIVITY' | 'TASKS' | 'DECISIONS' | 'MEMORY' | 'AGENTS'>('ACTIVITY');
+  const [activeTab, setActiveTab] = useState<'ACTIVITY' | 'TASKS' | 'DECISIONS' | 'MEMORY' | 'AGENTS' | 'TREASURY'>('ACTIVITY');
   const [promptInput, setPromptInput] = useState('');
   const logScrollRef = useRef<HTMLDivElement>(null);
 
@@ -125,13 +128,14 @@ export default function CommandCenter({
       </div>
 
       {/* 2. TAB BUTTONS BAR (matching screenshot) */}
-      <div className="grid grid-cols-5 gap-1 border-b-2 border-[#2c2621] pb-1.5 mb-1.5">
+      <div className="grid grid-cols-6 gap-1 border-b-2 border-[#2c2621] pb-1.5 mb-1.5">
         {[
           { id: 'ACTIVITY', label: 'ACTIVITY', icon: Activity },
           { id: 'TASKS', label: 'TASKS', icon: CheckSquare },
           { id: 'DECISIONS', label: 'DECISIONS', icon: Scale },
           { id: 'MEMORY', label: 'MEMORY', icon: BookOpen },
-          { id: 'AGENTS', label: 'AGENTS', icon: Users }
+          { id: 'AGENTS', label: 'AGENTS', icon: Users },
+          { id: 'TREASURY', label: 'TREASURY', icon: Coins }
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -331,6 +335,11 @@ export default function CommandCenter({
               );
             })}
           </div>
+        )}
+
+        {/* Tab 6: TREASURY */}
+        {activeTab === 'TREASURY' && (
+          <TreasuryPanel treasury={treasury} />
         )}
       </div>
 
