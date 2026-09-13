@@ -17,6 +17,7 @@ import MemoryCoreModal from '@/components/MemoryCoreModal';
 import StatsModal from '@/components/StatsModal';
 import SettingsModal from '@/components/SettingsModal';
 import ExecutiveReportModal from '@/components/ExecutiveReportModal';
+import CodeStudioModal from '@/components/CodeStudioModal';
 
 import {
   INITIAL_COMPANY,
@@ -40,7 +41,8 @@ import {
   Database,
   Zap,
   FileText,
-  Coins
+  Coins,
+  Code2
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -65,6 +67,17 @@ export default function Dashboard() {
   const [isStatsOpen, setIsStatsOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
+  const [isCodeStudioOpen, setIsCodeStudioOpen] = useState<boolean>(false);
+
+  const hasCodeDeliverables = Boolean(
+    company.final_report ||
+    memories.some(
+      (m) =>
+        m.category === 'CODE' ||
+        m.key === 'DEV_CODE_ARTIFACTS' ||
+        (m.value && (m.value.sql_ddl || m.value.code_deliverable))
+    )
+  );
 
   // Settings configuration
   const [apiBase, setApiBase] = useState<string>(DEFAULT_API_BASE);
@@ -696,6 +709,20 @@ export default function Dashboard() {
 
           {/* Right Action Controls (matching screenshot) */}
           <div className="flex items-center space-x-1.5">
+            {hasCodeDeliverables && (
+              <button
+                onClick={() => {
+                  sound.playSuccess();
+                  setIsCodeStudioOpen(true);
+                }}
+                className="px-2.5 py-1 bg-amber-700 hover:bg-amber-600 text-white border-2 border-[#2c2621] rounded text-[10px] font-black flex items-center gap-1.5 shadow cursor-pointer transition animate-pulse"
+                title="Open Interactive Code & Architecture Studio"
+              >
+                <Code2 className="w-3 h-3 text-white" />
+                <span>Code Studio</span>
+              </button>
+            )}
+
             {company.final_report && (
               <button
                 onClick={() => {
@@ -790,6 +817,7 @@ export default function Dashboard() {
                   onSendPrompt={(prompt) => handleStartOrganization(prompt)}
                   onSelectAgent={(agent) => setSelectedAgent(agent)}
                   onRefreshTreasury={() => loadTreasury(company.id)}
+                  onOpenCodeStudio={() => setIsCodeStudioOpen(true)}
                 />
               </div>
             </div>
@@ -917,6 +945,14 @@ export default function Dashboard() {
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         reportContent={company.final_report || null}
+        companyGoal={company.goal || goalInput}
+      />
+
+      {/* CODE & ARCHITECTURE STUDIO MODAL */}
+      <CodeStudioModal
+        isOpen={isCodeStudioOpen}
+        onClose={() => setIsCodeStudioOpen(false)}
+        memories={memories}
         companyGoal={company.goal || goalInput}
       />
     </main>

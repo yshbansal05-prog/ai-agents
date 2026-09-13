@@ -80,7 +80,16 @@ export default function ExecutiveReportModal({
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        onclone: (clonedDoc) => {
+          const styleTags = clonedDoc.getElementsByTagName('style');
+          for (let i = 0; i < styleTags.length; i++) {
+            const style = styleTags[i];
+            if (style.textContent && style.textContent.includes('oklch')) {
+              style.textContent = style.textContent.replace(/oklch\([^)]+\)/g, '#2c2621');
+            }
+          }
+        }
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -90,15 +99,17 @@ export default function ExecutiveReportModal({
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
       let position = 0;
+      let pageCount = 0;
 
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
       heightLeft -= pageHeight;
 
-      while (heightLeft >= 0) {
+      while (heightLeft > 0 && pageCount < 20) {
         position = heightLeft - imgHeight;
         pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
         heightLeft -= pageHeight;
+        pageCount++;
       }
 
       const safeGoal = (companyGoal || 'Report')
@@ -107,8 +118,7 @@ export default function ExecutiveReportModal({
       pdf.save(`AI_Org_Executive_Report_${safeGoal}_${Date.now()}.pdf`);
       sound.playSuccess();
     } catch (err) {
-      console.error('Failed to export PDF:', err);
-      alert('Unable to generate PDF directly; opening print preview instead.');
+      console.warn('Direct PDF canvas generation encountered styling constraints; falling back to print dialog:', err);
       window.print();
     } finally {
       setIsExporting(false);

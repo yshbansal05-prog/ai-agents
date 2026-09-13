@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ActivityLog, Memory, Task, Decision, Agent, TreasurySummary } from '@/types';
 import { sound } from '@/utils/sound';
-import { Terminal, Pause, Play, Trash2, Activity, CheckSquare, Scale, BookOpen, Users, Sparkles, Send, Coins, FileText } from 'lucide-react';
+import { Terminal, Pause, Play, Trash2, Activity, CheckSquare, Scale, BookOpen, Users, Sparkles, Send, Coins, FileText, Code2 } from 'lucide-react';
 import TreasuryPanel from './TreasuryPanel';
 import ExecutiveReportModal from './ExecutiveReportModal';
 
@@ -22,6 +22,7 @@ interface CommandCenterProps {
   onSendPrompt?: (prompt: string) => void;
   onSelectAgent?: (agent: Agent) => void;
   onRefreshTreasury?: () => void;
+  onOpenCodeStudio?: () => void;
 }
 
 export default function CommandCenter({
@@ -38,12 +39,20 @@ export default function CommandCenter({
   onClearLogs,
   onSendPrompt,
   onSelectAgent,
-  onRefreshTreasury
+  onRefreshTreasury,
+  onOpenCodeStudio
 }: CommandCenterProps) {
-  const [activeTab, setActiveTab] = useState<'ACTIVITY' | 'TASKS' | 'DECISIONS' | 'MEMORY' | 'AGENTS' | 'TREASURY' | 'REPORT'>('ACTIVITY');
+  const [activeTab, setActiveTab] = useState<'ACTIVITY' | 'TASKS' | 'DECISIONS' | 'MEMORY' | 'AGENTS' | 'TREASURY' | 'REPORT' | 'CODE'>('ACTIVITY');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [promptInput, setPromptInput] = useState('');
   const logScrollRef = useRef<HTMLDivElement>(null);
+
+  const devDeliverables = memories.find(
+    (m) =>
+      m.category === 'CODE' ||
+      m.key === 'DEV_CODE_ARTIFACTS' ||
+      (m.value && (m.value.sql_ddl || m.value.code_deliverable))
+  )?.value;
 
   // Auto-scroll logs when new entries arrive and not paused
   useEffect(() => {
@@ -132,7 +141,7 @@ export default function CommandCenter({
         </div>
       </div>
 
-      {/* Celebration Banner when All Tasks Complete */}
+      {/* Celebration Banner when Tasks Complete */}
       {reportContent && (
         <div className="bg-emerald-800/15 border-2 border-emerald-700/60 rounded p-1.5 mb-1.5 flex items-center justify-between shadow-xs">
           <div className="flex items-center space-x-1.5">
@@ -142,25 +151,39 @@ export default function CommandCenter({
                 ALL TASKS COMPLETED
               </div>
               <div className="text-[7px] text-emerald-800 font-semibold leading-tight">
-                Executive Deliverable Report Ready
+                Executive Deliverable & Codebase Ready
               </div>
             </div>
           </div>
-          <button
-            onClick={() => {
-              sound.playSuccess();
-              setIsReportModalOpen(true);
-            }}
-            className="flex items-center space-x-1 px-2 py-0.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded border border-[#2c2621] text-[7.5px] font-black uppercase tracking-wider transition shadow cursor-pointer animate-pulse"
-          >
-            <FileText className="w-2.5 h-2.5" />
-            <span>View PDF</span>
-          </button>
+          <div className="flex items-center space-x-1">
+            {onOpenCodeStudio && (
+              <button
+                onClick={() => {
+                  sound.playSuccess();
+                  onOpenCodeStudio();
+                }}
+                className="flex items-center space-x-1 px-2 py-0.5 bg-amber-600 hover:bg-amber-500 text-white rounded border border-[#2c2621] text-[7.5px] font-black uppercase tracking-wider transition shadow cursor-pointer"
+              >
+                <Code2 className="w-2.5 h-2.5" />
+                <span>Code Studio</span>
+              </button>
+            )}
+            <button
+              onClick={() => {
+                sound.playSuccess();
+                setIsReportModalOpen(true);
+              }}
+              className="flex items-center space-x-1 px-2 py-0.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded border border-[#2c2621] text-[7.5px] font-black uppercase tracking-wider transition shadow cursor-pointer animate-pulse"
+            >
+              <FileText className="w-2.5 h-2.5" />
+              <span>View PDF</span>
+            </button>
+          </div>
         </div>
       )}
 
       {/* 2. TAB BUTTONS BAR */}
-      <div className={`grid ${reportContent ? 'grid-cols-7' : 'grid-cols-6'} gap-1 border-b-2 border-[#2c2621] pb-1.5 mb-1.5`}>
+      <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 border-b-2 border-[#2c2621] pb-1.5 mb-1.5">
         {[
           { id: 'ACTIVITY', label: 'ACTIVITY', icon: Activity },
           { id: 'TASKS', label: 'TASKS', icon: CheckSquare },
@@ -168,6 +191,7 @@ export default function CommandCenter({
           { id: 'MEMORY', label: 'MEMORY', icon: BookOpen },
           { id: 'AGENTS', label: 'AGENTS', icon: Users },
           { id: 'TREASURY', label: 'TREASURY', icon: Coins },
+          { id: 'CODE', label: 'CODE', icon: Code2 },
           ...(reportContent ? [{ id: 'REPORT', label: 'REPORT', icon: FileText }] : [])
         ].map((tab) => {
           const Icon = tab.icon;
@@ -382,13 +406,52 @@ export default function CommandCenter({
               <span className="text-[8px] font-black uppercase text-[#6b5b52]">EXECUTIVE REPORT PREVIEW</span>
               <button
                 onClick={() => setIsReportModalOpen(true)}
-                className="text-[7.5px] px-2 py-0.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded font-bold uppercase transition"
+                className="text-[7.5px] px-2 py-0.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded font-bold uppercase transition cursor-pointer"
               >
                 Open Fullscreen PDF
               </button>
             </div>
             <div className="bg-[#f4ece1] border border-[#2c2621] rounded p-2 text-[8px] whitespace-pre-wrap leading-relaxed max-h-[260px] overflow-y-auto font-mono text-[#2c2621]">
               {reportContent}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 8: CODE */}
+        {activeTab === 'CODE' && (
+          <div className="space-y-2 p-1">
+            <div className="flex items-center justify-between border-b border-[#d8c3b1] pb-1">
+              <span className="text-[8px] font-black uppercase text-[#6b5b52]">DEVELOPER CODEBASE PREVIEW</span>
+              {onOpenCodeStudio && (
+                <button
+                  onClick={() => {
+                    sound.playClick();
+                    onOpenCodeStudio();
+                  }}
+                  className="text-[7.5px] px-2 py-0.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold uppercase transition flex items-center gap-1 cursor-pointer"
+                >
+                  <Code2 className="w-2.5 h-2.5" />
+                  <span>Open Studio & Export (.zip)</span>
+                </button>
+              )}
+            </div>
+            <div className="bg-[#1e1e1e] border border-[#2c2621] rounded p-2 text-[8px] font-mono text-[#d4d4d4] space-y-1 shadow-inner">
+              <div className="text-amber-400 font-bold border-b border-[#333333] pb-0.5 flex items-center justify-between">
+                <span>📁 database/schema.sql</span>
+                <span className="text-[7px] text-[#888888]">PostgreSQL DDL</span>
+              </div>
+              <pre className="max-h-24 overflow-y-auto whitespace-pre leading-relaxed text-[#9cdcfe]">
+                {devDeliverables?.sql_ddl || '-- PostgreSQL DDL Generated by Dev Agent'}
+              </pre>
+            </div>
+            <div className="bg-[#1e1e1e] border border-[#2c2621] rounded p-2 text-[8px] font-mono text-[#d4d4d4] space-y-1 shadow-inner">
+              <div className="text-emerald-400 font-bold border-b border-[#333333] pb-0.5 flex items-center justify-between">
+                <span>📁 backend/controller.py</span>
+                <span className="text-[7px] text-[#888888]">FastAPI Router</span>
+              </div>
+              <pre className="max-h-24 overflow-y-auto whitespace-pre leading-relaxed text-[#ce9178]">
+                {devDeliverables?.code_deliverable || '# FastAPI Controller Implementation'}
+              </pre>
             </div>
           </div>
         )}
