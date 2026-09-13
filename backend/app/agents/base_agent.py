@@ -87,7 +87,8 @@ class BaseAgent:
                     model=model_name,
                     api_key=api_key,
                     base_url=base_url,
-                    temperature=0.7
+                    temperature=0.7,
+                    max_tokens=4096
                 )
             elif self.provider in ["local", "ollama", "vllm"]:
                 from langchain_openai import ChatOpenAI

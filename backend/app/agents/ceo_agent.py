@@ -216,6 +216,10 @@ The AI Organization has successfully executed the end-to-end strategic planning,
 * **Key Findings:** {json.dumps(research_out.get('key_findings', ['Target users experience friction with current manual workflows.', 'High demand for AI-driven automation.']))}
 * **Competitor Landscape:** {json.dumps(research_out.get('competitors', ['Legacy manual solutions', 'Fragmented point tools']))}
 * **Market Risks:** {json.dumps(research_out.get('risks', ['User onboarding friction', 'Data compliance']))}
+{f'''* **Verified x402 Paid Market Intelligence (Algorand Testnet settled via GoPlausible):**
+  - **TAM / Market Size:** {research_out.get("x402_paid_intelligence", {}).get("market_size", "N/A")}
+  - **Strategic Recommendation:** {research_out.get("x402_paid_intelligence", {}).get("strategic_recommendation", "N/A")}
+  - **Pricing Insights:** {json.dumps(research_out.get("x402_paid_intelligence", {}).get("pricing_insights", []))}''' if research_out.get("x402_paid_intelligence") else ''}
 
 ---
 

@@ -1,6 +1,6 @@
 import json
 import asyncio
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from sse_starlette.sse import EventSourceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,6 +75,12 @@ async def run_company(company_id: str, background_tasks: BackgroundTasks, db: As
 
     background_tasks.add_task(orchestrator.run_pipeline, company_id, company.goal)
     return {"message": "AI Organization pipeline execution started", "company_id": company_id}
+
+@router.get("/treasury")
+@router.get("/treasury/summary")
+async def get_all_treasury(db: AsyncSession = Depends(get_db)):
+    """Retrieves autonomous treasury expenditures and on-chain posture across the organization."""
+    return await CompanyMemoryManager.get_treasury_summary(db, None)
 
 @router.get("/{company_id}")
 async def get_company(company_id: str, db: AsyncSession = Depends(get_db)):

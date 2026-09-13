@@ -125,8 +125,9 @@ export class ApiService {
   }
 
   // 11. Fetch treasury posture & transactions
-  async getTreasury(companyId: string): Promise<any> {
-    const res = await fetch(`${this.baseUrl}/${companyId}/treasury`);
+  async getTreasury(companyId?: string): Promise<any> {
+    const url = companyId ? `${this.baseUrl}/${companyId}/treasury` : `${this.baseUrl}/treasury`;
+    const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`Failed to fetch treasury: ${res.statusText}`);
     }

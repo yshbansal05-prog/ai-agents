@@ -52,36 +52,65 @@ Return a JSON object with:
             parsed["raw_sources"] = search_results
             if paid_intelligence:
                 parsed["x402_paid_intelligence"] = paid_intelligence
+                # If LLM didn't mention paid market size or recommendation, merge them in
+                if "market_size" in paid_intelligence and "market_size" not in parsed:
+                    parsed["market_size"] = paid_intelligence["market_size"]
+                if "strategic_recommendation" in paid_intelligence:
+                    strat = paid_intelligence["strategic_recommendation"]
+                    if strat not in parsed.get("recommendations", []):
+                        parsed.setdefault("recommendations", []).insert(0, strat)
             return parsed
 
         domain_name = goal.strip().rstrip(".")
         
-        return {
-            "summary": f"Strong market opportunity identified for '{domain_name}'. Market demand indicates a growing requirement for automated solutions in this domain.",
-            "key_findings": [
-                f"Target users currently experience significant friction addressing: {domain_name}.",
-                f"Web intelligence indicates key demand for streamlined, AI-driven automation for this workflow.",
-                f"Current solutions lack real-time integration and contextual intelligent assistance."
-            ],
-            "competitors": [
-                f"Traditional legacy platforms - high complexity and slow feature velocity.",
-                f"Manual spreadsheet & email workflows - error-prone and unscalable.",
-                f"Niche point-solutions - lack end-to-end multi-agent orchestration capabilities."
-            ],
-            "opportunities": [
-                f"AI-orchestrated workflow automation tailored for '{domain_name}'.",
-                "Real-time event streaming and interactive progress visualization.",
-                "Modular API integration enabling rapid partner ecosystem growth."
-            ],
+        # Build synthesis incorporating paid intelligence if available
+        summary_text = f"Strong market opportunity identified for '{domain_name}'."
+        findings = [
+            f"Target users currently experience significant friction addressing: {domain_name}.",
+            f"Web intelligence indicates key demand for streamlined, AI-driven automation for this workflow.",
+            f"Current solutions lack real-time integration and contextual intelligent assistance."
+        ]
+        competitors = [
+            f"Traditional legacy platforms - high complexity and slow feature velocity.",
+            f"Manual spreadsheet & email workflows - error-prone and unscalable.",
+            f"Niche point-solutions - lack end-to-end multi-agent orchestration capabilities."
+        ]
+        opportunities = [
+            f"AI-orchestrated workflow automation tailored for '{domain_name}'.",
+            "Real-time event streaming and interactive progress visualization.",
+            "Modular API integration enabling rapid partner ecosystem growth."
+        ]
+        recommendations = [
+            f"Develop a high-impact MVP focusing on core pain points of '{domain_name}'.",
+            "Establish real-time activity dashboards to build immediate user trust.",
+            "Iterate rapidly based on direct feedback from early adopter cohorts."
+        ]
+
+        if paid_intelligence:
+            if "market_size" in paid_intelligence:
+                summary_text += f" {paid_intelligence['market_size']}"
+                findings.insert(0, f"Verified Market TAM: {paid_intelligence['market_size']}")
+            if "competitive_landscape" in paid_intelligence and isinstance(paid_intelligence["competitive_landscape"], list):
+                competitors = paid_intelligence["competitive_landscape"] + competitors[:1]
+            if "pricing_insights" in paid_intelligence and isinstance(paid_intelligence["pricing_insights"], list):
+                opportunities.insert(0, f"Monetization Structure: {paid_intelligence['pricing_insights'][1] if len(paid_intelligence['pricing_insights']) > 1 else paid_intelligence['pricing_insights'][0]}")
+            if "strategic_recommendation" in paid_intelligence:
+                recommendations.insert(0, paid_intelligence["strategic_recommendation"])
+
+        result = {
+            "summary": summary_text,
+            "key_findings": findings[:4],
+            "competitors": competitors[:4],
+            "opportunities": opportunities[:4],
             "risks": [
                 "Initial user onboarding and workflow adoption friction.",
                 "Ensuring high system reliability and data privacy compliance."
             ],
-            "recommendations": [
-                f"Develop a high-impact MVP focusing on core pain points of '{domain_name}'.",
-                "Establish real-time activity dashboards to build immediate user trust.",
-                "Iterate rapidly based on direct feedback from early adopter cohorts."
-            ],
+            "recommendations": recommendations[:4],
             "raw_sources": search_results
         }
+        if paid_intelligence:
+            result["x402_paid_intelligence"] = paid_intelligence
+        return result
+
 

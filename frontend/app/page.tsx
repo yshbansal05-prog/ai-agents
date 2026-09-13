@@ -16,6 +16,7 @@ import DiagramBoardModal from '@/components/DiagramBoardModal';
 import MemoryCoreModal from '@/components/MemoryCoreModal';
 import StatsModal from '@/components/StatsModal';
 import SettingsModal from '@/components/SettingsModal';
+import ExecutiveReportModal from '@/components/ExecutiveReportModal';
 
 import {
   INITIAL_COMPANY,
@@ -63,15 +64,29 @@ export default function Dashboard() {
   const [isMemoryCoreOpen, setIsMemoryCoreOpen] = useState<boolean>(false);
   const [isStatsOpen, setIsStatsOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
 
   // Settings configuration
   const [apiBase, setApiBase] = useState<string>(DEFAULT_API_BASE);
   const [simulationSpeed, setSimulationSpeed] = useState<number>(1);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
-  // Keep api service in sync with custom settings
+  // Keep api service in sync with custom settings and load treasury
+  const loadTreasury = async (companyId?: string) => {
+    try {
+      console.log('[TREASURY UI] fetching transactions');
+      const data = await api.getTreasury(companyId);
+      console.log('[TREASURY UI] response', data);
+      setTreasury(data);
+      console.log('[TREASURY UI] transactions loaded', data?.transactions?.length ?? 0);
+    } catch (err) {
+      console.warn('[TREASURY UI] Error loading treasury:', err);
+    }
+  };
+
   useEffect(() => {
     api.setBaseUrl(apiBase);
+    loadTreasury();
   }, [apiBase]);
 
   const sseRef = useRef<EventSource | null>(null);
@@ -92,7 +107,7 @@ export default function Dashboard() {
     setMemories(INITIAL_MEMORIES);
     setDecisions(INITIAL_DECISIONS);
     setLogs(INITIAL_LOGS);
-    setTreasury(null);
+    loadTreasury();
     setIsRunning(false);
     setIsPaused(false);
     setSelectedAgent(null);
@@ -178,6 +193,7 @@ export default function Dashboard() {
             sound.playSuccess();
             setCompany((prev) => ({ ...prev, final_report: data.data.value, status: 'COMPLETED' }));
             setIsRunning(false);
+            setIsReportModalOpen(true);
           }
         } else if (data.event_type === 'decision_made') {
           setDecisions((prev) => [...prev, data.data]);
@@ -193,7 +209,7 @@ export default function Dashboard() {
               timestamp: new Date().toISOString()
             }
           ]);
-          api.getTreasury(companyId).then((t) => setTreasury(t)).catch(() => {});
+          loadTreasury(companyId);
         } else if (data.event_type === 'payment_approved') {
           sound.playTick();
           setLogs((prev) => [
@@ -206,7 +222,7 @@ export default function Dashboard() {
               timestamp: new Date().toISOString()
             }
           ]);
-          api.getTreasury(companyId).then((t) => setTreasury(t)).catch(() => {});
+          loadTreasury(companyId);
         } else if (data.event_type === 'payment_pending') {
           sound.playTick();
           setLogs((prev) => [
@@ -219,6 +235,7 @@ export default function Dashboard() {
               timestamp: new Date().toISOString()
             }
           ]);
+          loadTreasury(companyId);
         } else if (data.event_type === 'payment_settled') {
           sound.playSuccess();
           setLogs((prev) => [
@@ -233,7 +250,7 @@ export default function Dashboard() {
               timestamp: new Date().toISOString()
             }
           ]);
-          api.getTreasury(companyId).then((t) => setTreasury(t)).catch(() => {});
+          loadTreasury(companyId);
         } else if (data.event_type === 'payment_failed') {
           setLogs((prev) => [
             ...prev,
@@ -245,7 +262,7 @@ export default function Dashboard() {
               timestamp: new Date().toISOString()
             }
           ]);
-          api.getTreasury(companyId).then((t) => setTreasury(t)).catch(() => {});
+          loadTreasury(companyId);
         }
       };
 
@@ -581,6 +598,7 @@ export default function Dashboard() {
       ]);
 
       setIsRunning(false);
+      setIsReportModalOpen(true);
     }, delay(9500));
     simulationTimers.current.push(step4);
   };
@@ -599,7 +617,8 @@ export default function Dashboard() {
     setLogs([]);
     setMemories([]);
     setDecisions([]);
-    setTreasury(null);
+    // Do NOT wipe treasury to null; preserve existing expenditures
+    loadTreasury();
     setSelectedAgent(null);
     setIsPaused(false);
     setAgents((prev) =>
@@ -677,6 +696,20 @@ export default function Dashboard() {
 
           {/* Right Action Controls (matching screenshot) */}
           <div className="flex items-center space-x-1.5">
+            {company.final_report && (
+              <button
+                onClick={() => {
+                  sound.playSuccess();
+                  setIsReportModalOpen(true);
+                }}
+                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white border-2 border-[#2c2621] rounded text-[10px] font-black flex items-center gap-1.5 shadow cursor-pointer transition animate-pulse"
+                title="View C-Suite Executive PDF Deliverable"
+              >
+                <FileText className="w-3 h-3 text-white" />
+                <span>Executive PDF</span>
+              </button>
+            )}
+
             <button
               onClick={() => {
                 sound.playClick();
@@ -756,6 +789,7 @@ export default function Dashboard() {
                   onClearLogs={() => setLogs([])}
                   onSendPrompt={(prompt) => handleStartOrganization(prompt)}
                   onSelectAgent={(agent) => setSelectedAgent(agent)}
+                  onRefreshTreasury={() => loadTreasury(company.id)}
                 />
               </div>
             </div>
@@ -829,7 +863,7 @@ export default function Dashboard() {
 
             {activeTab === 'TREASURY' && (
               <div className="bg-[#f9f3eb] border-2 border-[#2c2621] rounded-lg p-3">
-                <TreasuryPanel treasury={treasury} />
+                <TreasuryPanel treasury={treasury} onRefresh={() => loadTreasury(company.id)} />
               </div>
             )}
           </div>
@@ -876,6 +910,14 @@ export default function Dashboard() {
         soundEnabled={soundEnabled}
         setSoundEnabled={setSoundEnabled}
         onResetOrg={handleResetOrg}
+      />
+
+      {/* EXECUTIVE DELIVERABLE PDF MODAL */}
+      <ExecutiveReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        reportContent={company.final_report || null}
+        companyGoal={company.goal || goalInput}
       />
     </main>
   );

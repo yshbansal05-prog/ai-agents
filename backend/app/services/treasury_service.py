@@ -1,6 +1,7 @@
 import os
 import httpx
 import logging
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.memory.company_memory import CompanyMemoryManager
@@ -66,6 +67,7 @@ class TreasuryService:
         """Executes the full x402 payment lifecycle with budget governance & on-chain settlement."""
         logger.info(f"[{agent_name}] Requesting ${amount:.2f} USDC for '{service_name}' ({domain})")
 
+        now_iso = datetime.now(timezone.utc).isoformat()
         # Step 1: Initial Payment Request
         tx = await CompanyMemoryManager.record_treasury_transaction(
             db=db,
@@ -81,6 +83,9 @@ class TreasuryService:
             facilitator="GoPlausible"
         )
 
+        print(f"[TREASURY] REQUESTED: Agent={agent_name}, Amount=${amount:.2f}, Asset=USDC, TxID={tx.id}, Timestamp={now_iso}")
+        logger.info(f"[TREASURY] REQUESTED: Agent={agent_name}, Amount=${amount:.2f}, Asset=USDC, TxID={tx.id}, Timestamp={now_iso}")
+
         await CompanyMemoryManager.log_activity(
             db, company_id, agent_name,
             f"Requested ${amount:.2f} USDC treasury disbursement for '{service_name}'.",
@@ -91,6 +96,8 @@ class TreasuryService:
         policy_result = await cls.evaluate_spending_policy(db, company_id, agent_name, amount)
 
         if not policy_result["approved"]:
+            rej_time = datetime.now(timezone.utc).isoformat()
+            print(f"[TREASURY] REJECTED: Agent={agent_name}, Amount=${amount:.2f}, Asset=USDC, TxID={tx.id}, Reason={policy_result['reason']}, Timestamp={rej_time}")
             await CompanyMemoryManager.update_treasury_transaction(
                 db, tx.id, status="REJECTED", metadata_json={"reason": policy_result["reason"]}
             )
@@ -102,6 +109,10 @@ class TreasuryService:
             return {"success": False, "error": policy_result["reason"]}
 
         # Step 3: Record Organizational Decision (Phase 11)
+        appr_time = datetime.now(timezone.utc).isoformat()
+        print(f"[TREASURY] APPROVED: Agent={agent_name}, Amount=${amount:.2f}, Asset=USDC, TxID={tx.id}, Timestamp={appr_time}")
+        logger.info(f"[TREASURY] APPROVED: Agent={agent_name}, Amount=${amount:.2f}, Asset=USDC, TxID={tx.id}, Timestamp={appr_time}")
+
         await CompanyMemoryManager.update_treasury_transaction(
             db, tx.id, status="APPROVED", metadata_json=policy_result
         )
@@ -121,6 +132,10 @@ class TreasuryService:
         )
 
         # Step 4: Dispatch x402 Payment via Node.js x402 Service (Phase 6 & 12)
+        pend_time = datetime.now(timezone.utc).isoformat()
+        print(f"[TREASURY] PAYMENT_PENDING: Agent={agent_name}, Amount=${amount:.2f}, Asset=USDC, TxID={tx.id}, Timestamp={pend_time}")
+        logger.info(f"[TREASURY] PAYMENT_PENDING: Agent={agent_name}, Amount=${amount:.2f}, Asset=USDC, TxID={tx.id}, Timestamp={pend_time}")
+
         await CompanyMemoryManager.update_treasury_transaction(
             db, tx.id, status="PAYMENT_PENDING"
         )
@@ -140,7 +155,7 @@ class TreasuryService:
 
             # Handle settlement outcome
             tx_hash = res_data.get("tx_hash", "")
-            is_settled = res_data.get("success", False) or bool(tx_hash)
+            is_settled = res_data.get("success", False) and bool(tx_hash)
             status = "SETTLED" if is_settled else "FAILED"
 
             await CompanyMemoryManager.update_treasury_transaction(
@@ -152,6 +167,9 @@ class TreasuryService:
             )
 
             if is_settled:
+                settle_time = datetime.now(timezone.utc).isoformat()
+                print(f"[TREASURY] SETTLED: Agent={agent_name}, Amount=${amount:.2f}, Asset=USDC, TxID={tx.id}, TxHash={tx_hash}, Timestamp={settle_time}")
+                logger.info(f"[TREASURY] SETTLED: Agent={agent_name}, Amount=${amount:.2f}, Asset=USDC, TxID={tx.id}, TxHash={tx_hash}, Timestamp={settle_time}")
                 log_msg = f"x402 PAYMENT SETTLED on Algorand Testnet (Tx: {tx_hash[:16]}...) [Facilitator: GoPlausible] [Duration: {res_data.get('duration_seconds', '0.6')}s]."
                 await CompanyMemoryManager.log_activity(db, company_id, agent_name, log_msg, "SUCCESS")
                 return {
@@ -161,21 +179,25 @@ class TreasuryService:
                     "data": res_data.get("resource_data", {}).get("data", {})
                 }
             else:
-                err_reason = res_data.get("settlement_details", {}).get("errorReason", "Settlement error")
+                fail_time = datetime.now(timezone.utc).isoformat()
+                err_reason = res_data.get("settlement_details", {}).get("errorReason") or res_data.get("error") or "Settlement failed"
+                print(f"[TREASURY] FAILED: Agent={agent_name}, Amount=${amount:.2f}, Asset=USDC, TxID={tx.id}, Error={err_reason}, Timestamp={fail_time}")
+                logger.warning(f"[TREASURY] FAILED: Agent={agent_name}, Amount=${amount:.2f}, Asset=USDC, TxID={tx.id}, Error={err_reason}, Timestamp={fail_time}")
                 await CompanyMemoryManager.log_activity(
                     db, company_id, agent_name,
-                    f"x402 Settlement pending/unfunded on Testnet: {err_reason[:80]}...",
+                    f"x402 payment failed: {err_reason}",
                     "WARNING"
                 )
-                # Fallback to local intelligence while retaining real transaction records
                 return {
-                    "success": True,
-                    "tx_hash": f"SIM_ALGO_{tx.id[:8]}",
-                    "explorer_url": f"https://lora.algokit.io/testnet/account/{os.getenv('AVM_ADDRESS', 'BJSAKUOZAQJGH2Y3LEPVVJY5HLKEPP6EI4XFNOZPBVE4VBVVCNZUB434CQ')}",
-                    "data": res_data.get("resource_data", {}).get("data", {})
+                    "success": False,
+                    "error": err_reason,
+                    "tx_hash": "",
+                    "data": None
                 }
 
         except Exception as e:
+            fail_time = datetime.now(timezone.utc).isoformat()
+            print(f"[TREASURY] FAILED: Agent={agent_name}, Amount=${amount:.2f}, Asset=USDC, TxID={tx.id}, Error={str(e)}, Timestamp={fail_time}")
             logger.error(f"Error calling x402 payment service: {e}", exc_info=True)
             await CompanyMemoryManager.update_treasury_transaction(
                 db, tx.id, status="FAILED", metadata_json={"error": str(e)}

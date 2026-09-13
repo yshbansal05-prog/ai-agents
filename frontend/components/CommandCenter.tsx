@@ -3,8 +3,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ActivityLog, Memory, Task, Decision, Agent, TreasurySummary } from '@/types';
 import { sound } from '@/utils/sound';
-import { Terminal, Pause, Play, Trash2, Activity, CheckSquare, Scale, BookOpen, Users, Sparkles, Send, Coins } from 'lucide-react';
+import { Terminal, Pause, Play, Trash2, Activity, CheckSquare, Scale, BookOpen, Users, Sparkles, Send, Coins, FileText } from 'lucide-react';
 import TreasuryPanel from './TreasuryPanel';
+import ExecutiveReportModal from './ExecutiveReportModal';
 
 interface CommandCenterProps {
   logs: ActivityLog[];
@@ -20,6 +21,7 @@ interface CommandCenterProps {
   onClearLogs: () => void;
   onSendPrompt?: (prompt: string) => void;
   onSelectAgent?: (agent: Agent) => void;
+  onRefreshTreasury?: () => void;
 }
 
 export default function CommandCenter({
@@ -30,13 +32,16 @@ export default function CommandCenter({
   agents = [],
   treasury,
   reportContent,
+  companyGoal = 'AI Organization Objective',
   isPaused,
   onTogglePause,
   onClearLogs,
   onSendPrompt,
-  onSelectAgent
+  onSelectAgent,
+  onRefreshTreasury
 }: CommandCenterProps) {
-  const [activeTab, setActiveTab] = useState<'ACTIVITY' | 'TASKS' | 'DECISIONS' | 'MEMORY' | 'AGENTS' | 'TREASURY'>('ACTIVITY');
+  const [activeTab, setActiveTab] = useState<'ACTIVITY' | 'TASKS' | 'DECISIONS' | 'MEMORY' | 'AGENTS' | 'TREASURY' | 'REPORT'>('ACTIVITY');
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [promptInput, setPromptInput] = useState('');
   const logScrollRef = useRef<HTMLDivElement>(null);
 
@@ -127,15 +132,43 @@ export default function CommandCenter({
         </div>
       </div>
 
-      {/* 2. TAB BUTTONS BAR (matching screenshot) */}
-      <div className="grid grid-cols-6 gap-1 border-b-2 border-[#2c2621] pb-1.5 mb-1.5">
+      {/* Celebration Banner when All Tasks Complete */}
+      {reportContent && (
+        <div className="bg-emerald-800/15 border-2 border-emerald-700/60 rounded p-1.5 mb-1.5 flex items-center justify-between shadow-xs">
+          <div className="flex items-center space-x-1.5">
+            <span className="text-xs">🏆</span>
+            <div>
+              <div className="text-[8px] font-black uppercase text-emerald-950 leading-tight">
+                ALL TASKS COMPLETED
+              </div>
+              <div className="text-[7px] text-emerald-800 font-semibold leading-tight">
+                Executive Deliverable Report Ready
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              sound.playSuccess();
+              setIsReportModalOpen(true);
+            }}
+            className="flex items-center space-x-1 px-2 py-0.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded border border-[#2c2621] text-[7.5px] font-black uppercase tracking-wider transition shadow cursor-pointer animate-pulse"
+          >
+            <FileText className="w-2.5 h-2.5" />
+            <span>View PDF</span>
+          </button>
+        </div>
+      )}
+
+      {/* 2. TAB BUTTONS BAR */}
+      <div className={`grid ${reportContent ? 'grid-cols-7' : 'grid-cols-6'} gap-1 border-b-2 border-[#2c2621] pb-1.5 mb-1.5`}>
         {[
           { id: 'ACTIVITY', label: 'ACTIVITY', icon: Activity },
           { id: 'TASKS', label: 'TASKS', icon: CheckSquare },
           { id: 'DECISIONS', label: 'DECISIONS', icon: Scale },
           { id: 'MEMORY', label: 'MEMORY', icon: BookOpen },
           { id: 'AGENTS', label: 'AGENTS', icon: Users },
-          { id: 'TREASURY', label: 'TREASURY', icon: Coins }
+          { id: 'TREASURY', label: 'TREASURY', icon: Coins },
+          ...(reportContent ? [{ id: 'REPORT', label: 'REPORT', icon: FileText }] : [])
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -339,7 +372,25 @@ export default function CommandCenter({
 
         {/* Tab 6: TREASURY */}
         {activeTab === 'TREASURY' && (
-          <TreasuryPanel treasury={treasury} />
+          <TreasuryPanel treasury={treasury} onRefresh={onRefreshTreasury} />
+        )}
+
+        {/* Tab 7: REPORT */}
+        {activeTab === 'REPORT' && (
+          <div className="space-y-2 p-1">
+            <div className="flex items-center justify-between border-b border-[#d8c3b1] pb-1">
+              <span className="text-[8px] font-black uppercase text-[#6b5b52]">EXECUTIVE REPORT PREVIEW</span>
+              <button
+                onClick={() => setIsReportModalOpen(true)}
+                className="text-[7.5px] px-2 py-0.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded font-bold uppercase transition"
+              >
+                Open Fullscreen PDF
+              </button>
+            </div>
+            <div className="bg-[#f4ece1] border border-[#2c2621] rounded p-2 text-[8px] whitespace-pre-wrap leading-relaxed max-h-[260px] overflow-y-auto font-mono text-[#2c2621]">
+              {reportContent}
+            </div>
+          </div>
         )}
       </div>
 
@@ -401,6 +452,14 @@ export default function CommandCenter({
           ))}
         </div>
       </div>
+
+      {/* Executive Report Modal */}
+      <ExecutiveReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        reportContent={reportContent}
+        companyGoal={companyGoal}
+      />
     </div>
   );
 }

@@ -122,22 +122,9 @@ app.post('/api/x402/pay-and-fetch', async (req, res) => {
     console.log('[x402 Client] Creating and signing Algorand transaction payload...');
     const paymentPayload = await httpClient.createPaymentPayload(paymentRequired);
 
-    // 5. Submit payment payload directly to GoPlausible facilitator for settlement
-    console.log(`[x402 Client] Submitting payment to GoPlausible Facilitator at ${FACILITATOR_URL}...`);
-    let settleResult;
-    try {
-      settleResult = await facilitatorClient.settle(paymentPayload, paymentRequired.accepts[0]);
-      console.log('[x402 Client] Facilitator settle response:', settleResult);
-    } catch (settleErr) {
-      console.warn('[x402 Client] Facilitator settle error:', settleErr.message);
-      settleResult = {
-        success: false,
-        errorReason: settleErr.message,
-        transaction: ''
-      };
-    }
-
-    // 6. Encode payment headers and fetch the paid resource
+    // 5. Encode payment headers and fetch the paid resource
+    // The x402 payment middleware verifies and settles the payload on Algorand Testnet
+    console.log(`[x402 Client] Submitting payment signature to protected resource: ${targetUrl}`);
     const paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload);
     const paidRes = await fetch(targetUrl, {
       headers: {
@@ -145,14 +132,23 @@ app.post('/api/x402/pay-and-fetch', async (req, res) => {
       },
     });
 
-    const responseData = await paidRes.json();
+    let settleResult = null;
+    try {
+      settleResult = httpClient.getPaymentSettleResponse((name) => paidRes.headers.get(name));
+      console.log('[x402 Client] Parsed on-chain settlement from header:', settleResult);
+    } catch (headerErr) {
+      console.warn('[x402 Client] Could not parse settlement from header:', headerErr.message);
+    }
+
+    const responseData = paidRes.ok ? await paidRes.json() : {};
     const duration = ((Date.now() - t0) / 1000).toFixed(2);
 
-    const txId = settleResult?.transaction || (responseData.verified ? `ALGO_${Date.now()}` : '');
+    const txId = settleResult?.transaction || '';
+    const isSettled = paidRes.ok && Boolean(txId);
 
     return res.json({
-      success: settleResult?.success || paidRes.ok,
-      status: settleResult?.success ? 'SETTLED' : (paidRes.ok ? 'SETTLED' : 'FAILED'),
+      success: isSettled,
+      status: isSettled ? 'SETTLED' : 'FAILED',
       duration_seconds: duration,
       network: ALGORAND_TESTNET_CAIP2,
       asset: 'USDC',
@@ -163,7 +159,7 @@ app.post('/api/x402/pay-and-fetch', async (req, res) => {
       facilitator: 'GoPlausible',
       tx_hash: txId,
       explorer_url: txId ? `https://lora.algokit.io/testnet/transaction/${txId}` : '',
-      settlement_details: settleResult,
+      settlement_details: settleResult || { success: false, errorReason: 'Settlement header missing or payment unconfirmed' },
       resource_data: responseData
     });
 
@@ -190,12 +186,12 @@ app.get('/api/x402/wallet-info', async (req, res) => {
     let optedIn = false;
 
     if (accountInfo) {
-      algoBalance = (accountInfo.amount || 0) / 1e6;
+      algoBalance = Number(accountInfo.amount || 0) / 1e6;
       const assets = accountInfo.assets || [];
-      const usdcAsset = assets.find(a => String(a['asset-id']) === String(USDC_TESTNET_ASA_ID));
+      const usdcAsset = assets.find(a => String(a.assetId || a['asset-id']) === String(USDC_TESTNET_ASA_ID));
       if (usdcAsset) {
         optedIn = true;
-        usdcBalance = (usdcAsset.amount || 0) / 1e6;
+        usdcBalance = Number(usdcAsset.amount || 0) / 1e6;
       }
     }
 
