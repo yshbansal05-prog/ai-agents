@@ -215,7 +215,7 @@ export default function ExecutiveReportModal({
                   </div>
                   <div>
                     <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase">
-                      AI ORGANIZATION OS
+                      AI ORGANIZATION NULL POINTERS INC.
                     </h1>
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                       Autonomous Executive Strategy & Deliverable Report
@@ -253,7 +253,7 @@ export default function ExecutiveReportModal({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs">
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <div className="text-[10px] text-slate-500 font-mono uppercase font-bold">Agents Executed</div>
-                  <div className="font-black text-slate-800 text-sm">5 Department Heads</div>
+                  <div className="font-black text-slate-800 text-sm">10 Department Heads</div>
                 </div>
                 <div className="bg-emerald-50 p-2.5 rounded-lg border border-emerald-200 text-emerald-900">
                   <div className="text-[10px] text-emerald-700 font-mono uppercase font-bold">x402 Payment</div>

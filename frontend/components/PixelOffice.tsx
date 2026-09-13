@@ -91,6 +91,72 @@ export default function PixelOffice({
     dependencies: []
   };
 
+  const product: Agent = getAgent('Ananya') || getAgent('Product') || {
+    id: 'agent-product',
+    name: 'Ananya Roy',
+    role: 'Product & UX',
+    objective: 'User journeys & UI wireframes',
+    status: 'WORKING',
+    current_task: 'Drafting Student Matching UI',
+    capabilities: [],
+    dependencies: []
+  };
+
+  const qa: Agent = getAgent('Vikram') || getAgent('QA') || {
+    id: 'agent-qa',
+    name: 'Vikram Rathore',
+    role: 'QA & InfoSec',
+    objective: 'Security auditing & testing',
+    status: 'COMPLETED',
+    current_task: 'Security scan passed (98%)',
+    capabilities: [],
+    dependencies: []
+  };
+
+  const devops: Agent = getAgent('Aditya') || getAgent('DevOps') || {
+    id: 'agent-devops',
+    name: 'Aditya Chen',
+    role: 'DevOps & SRE',
+    objective: 'Cloud deployment & uptime',
+    status: 'WORKING',
+    current_task: 'Edge CDN & K8s cluster',
+    capabilities: [],
+    dependencies: []
+  };
+
+  const sales: Agent = getAgent('Priya') || getAgent('Sales') || {
+    id: 'agent-sales',
+    name: 'Priya Nair',
+    role: 'Enterprise Sales',
+    objective: 'B2B contracts & revenue',
+    status: 'WAITING',
+    current_task: 'University career licensing',
+    capabilities: [],
+    dependencies: []
+  };
+
+  const legal: Agent = getAgent('Siddharth') || getAgent('Legal') || {
+    id: 'agent-legal',
+    name: 'Siddharth Mehta',
+    role: 'Legal & Ethics',
+    objective: 'FERPA/GDPR & compliance',
+    status: 'COMPLETED',
+    current_task: 'Privacy manifest ratified',
+    capabilities: [],
+    dependencies: []
+  };
+
+  const dev: Agent = getAgent('Dev') || {
+    id: 'agent-dev',
+    name: 'Dev Sharma',
+    role: 'Lead Fullstack Developer',
+    objective: 'API & Component Engineering',
+    status: 'WORKING',
+    current_task: 'Coding FastAPI endpoints & UI',
+    capabilities: ['Fullstack Architecture', 'FastAPI', 'Next.js', 'PostgreSQL'],
+    dependencies: ['agent-cto']
+  };
+
   // Helper to render an interactive character attached directly to a desk
   const renderDeskCharacter = (agent: Agent, type: CharacterType, displayName: string) => {
     const isSelected = selectedAgentId === agent.id;
@@ -173,39 +239,143 @@ export default function PixelOffice({
           </button>
         </div>
 
-        {/* Boardroom Table */}
-        <div className="relative flex items-center justify-center h-[82%]">
-          <div className="w-56 h-15 bg-[#9a673b] border-2 border-[#2c2621] rounded-2xl flex flex-col items-center justify-center shadow-md relative">
-            <div className="flex space-x-3 -mt-1 mb-1">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="w-5 h-3 bg-[#6b306b] border border-[#2c2621] rounded-xs shadow-xs" />
-              ))}
-            </div>
-            <span className="text-[7px] font-black text-[#f5ebe0] tracking-widest">BOARDROOM TABLE</span>
-
-            {/* When Meeting Mode is activated, agents gather around the table */}
-            {meetingMode && (
-              <div className="absolute inset-0 flex items-center justify-around z-30 pointer-events-auto px-2">
-                {[
-                  { agent: ceo, type: 'arnav' as CharacterType, name: 'Arnav' },
-                  { agent: research, type: 'meera' as CharacterType, name: 'Meera' },
-                  { agent: cto, type: 'rohan' as CharacterType, name: 'Rohan' },
-                  { agent: marketing, type: 'isha' as CharacterType, name: 'Isha' },
-                  { agent: finance, type: 'kabir' as CharacterType, name: 'Kabir' }
-                ].map(({ agent, type, name }) => (
-                  <div
-                    key={agent.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      sound.playClick();
-                      onSelectAgent(agent);
-                    }}
-                    className="cursor-pointer hover:scale-110 transition-transform"
-                  >
-                    <PixelCharacter type={type} isWorking={agent.status === 'WORKING'} name={name} size={42} />
-                  </div>
-                ))}
+        {/* Boardroom Table Area */}
+        <div className="relative flex items-center justify-center h-[85%] w-full">
+          {/* Executive Conference Table */}
+          <div className="w-[78%] h-[64px] bg-[#8c5427] border-2 border-[#2c2621] rounded-2xl flex flex-col items-center justify-center shadow-lg relative">
+            {/* Table Inlay & Texture */}
+            <div className="absolute inset-1 border border-[#a66a35]/40 rounded-xl pointer-events-none flex items-center justify-center">
+              {/* Conference speakerphone hub & documents in center */}
+              <div className="flex items-center space-x-3">
+                <div className="w-4 h-1 bg-[#4a2e18] rounded-full opacity-60" />
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-[#2c2621]/40 rounded border border-[#f5ebe0]/20">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[6.5px] font-black text-[#f5ebe0] tracking-widest uppercase">
+                    BOARDROOM
+                  </span>
+                </div>
+                <div className="w-4 h-1 bg-[#4a2e18] rounded-full opacity-60" />
               </div>
+            </div>
+
+            {/* Empty Executive Chairs when NOT in Meeting Mode */}
+            {!meetingMode && (
+              <>
+                {/* Left (CEO) Chair */}
+                <div className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-5 bg-[#592c59] border border-[#2c2621] rounded-l-md shadow-xs pointer-events-none" />
+                {/* Right (CFO) Chair */}
+                <div className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-5 bg-[#592c59] border border-[#2c2621] rounded-r-md shadow-xs pointer-events-none" />
+                {/* Top Chairs (4) */}
+                <div className="absolute -top-3 left-0 right-0 flex justify-around px-6 pointer-events-none">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="w-4 h-3 bg-[#592c59] border border-[#2c2621] rounded-t-md shadow-xs" />
+                  ))}
+                </div>
+                {/* Bottom Chairs (5) */}
+                <div className="absolute -bottom-3 left-0 right-0 flex justify-around px-4 pointer-events-none">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="w-4 h-3 bg-[#592c59] border border-[#2c2621] rounded-b-md shadow-xs" />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* When All-Hands Meeting Mode is activated, all 11 agents sit cleanly around perimeter */}
+            {meetingMode && (
+              <>
+                {/* TOP ROW: 4 Department Heads (Research, Product, CTO, Lead Dev) */}
+                <div className="absolute -top-9 left-0 right-0 flex justify-around px-5 z-30 pointer-events-auto">
+                  {[
+                    { agent: research, type: 'meera' as CharacterType, name: 'Meera' },
+                    { agent: product, type: 'ananya' as CharacterType, name: 'Ananya' },
+                    { agent: cto, type: 'rohan' as CharacterType, name: 'Rohan' },
+                    { agent: dev, type: 'employee1' as CharacterType, name: 'Dev' }
+                  ].map(({ agent, type, name }) => (
+                    <div
+                      key={agent.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        sound.playClick();
+                        onSelectAgent(agent);
+                      }}
+                      className={`cursor-pointer transition-transform flex flex-col items-center ${
+                        selectedAgentId === agent.id ? 'scale-115 z-40' : 'hover:scale-105'
+                      }`}
+                      title={`${name} (${agent.role})`}
+                    >
+                      {selectedAgentId === agent.id && (
+                        <div className="absolute -inset-1 rounded-full bg-amber-400/50 animate-ping -z-10" />
+                      )}
+                      <PixelCharacter type={type} isWorking={agent.status === 'WORKING'} name={name} size={28} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* LEFT: CEO (Arnav) at the Head of the Table */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    sound.playClick();
+                    onSelectAgent(ceo);
+                  }}
+                  className={`absolute -left-8 top-1/2 -translate-y-1/2 z-30 cursor-pointer transition-transform flex flex-col items-center pointer-events-auto ${
+                    selectedAgentId === ceo.id ? 'scale-115 z-40' : 'hover:scale-105'
+                  }`}
+                  title="Arnav (Chief Executive Officer)"
+                >
+                  {selectedAgentId === ceo.id && (
+                    <div className="absolute -inset-1 rounded-full bg-amber-400/50 animate-ping -z-10" />
+                  )}
+                  <PixelCharacter type="arnav" isWorking={ceo.status === 'WORKING'} name="Arnav" size={28} />
+                </div>
+
+                {/* RIGHT: Kabir (Finance & Treasury) at the Foot of the Table */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    sound.playClick();
+                    onSelectAgent(finance);
+                  }}
+                  className={`absolute -right-8 top-1/2 -translate-y-1/2 z-30 cursor-pointer transition-transform flex flex-col items-center pointer-events-auto ${
+                    selectedAgentId === finance.id ? 'scale-115 z-40' : 'hover:scale-105'
+                  }`}
+                  title="Kabir (Finance Lead)"
+                >
+                  {selectedAgentId === finance.id && (
+                    <div className="absolute -inset-1 rounded-full bg-amber-400/50 animate-ping -z-10" />
+                  )}
+                  <PixelCharacter type="kabir" isWorking={finance.status === 'WORKING'} name="Kabir" size={28} />
+                </div>
+
+                {/* BOTTOM ROW: 5 Operation & Growth Leads (Marketing, Sales, DevOps, QA, Legal) */}
+                <div className="absolute -bottom-9 left-0 right-0 flex justify-around px-3 z-30 pointer-events-auto">
+                  {[
+                    { agent: marketing, type: 'isha' as CharacterType, name: 'Isha' },
+                    { agent: sales, type: 'priya' as CharacterType, name: 'Priya' },
+                    { agent: devops, type: 'aditya' as CharacterType, name: 'Aditya' },
+                    { agent: qa, type: 'vikram' as CharacterType, name: 'Vikram' },
+                    { agent: legal, type: 'siddharth' as CharacterType, name: 'Siddharth' }
+                  ].map(({ agent, type, name }) => (
+                    <div
+                      key={agent.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        sound.playClick();
+                        onSelectAgent(agent);
+                      }}
+                      className={`cursor-pointer transition-transform flex flex-col items-center ${
+                        selectedAgentId === agent.id ? 'scale-115 z-40' : 'hover:scale-105'
+                      }`}
+                      title={`${name} (${agent.role})`}
+                    >
+                      {selectedAgentId === agent.id && (
+                        <div className="absolute -inset-1 rounded-full bg-amber-400/50 animate-ping -z-10" />
+                      )}
+                      <PixelCharacter type={type} isWorking={agent.status === 'WORKING'} name={name} size={28} />
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -222,97 +392,74 @@ export default function PixelOffice({
         </div>
       </div>
 
-      {/* 3. MAIN OPEN FLOOR PLAN DESKS (Exact placement matching reference image) */}
+      {/* 3. MAIN OPEN FLOOR PLAN DESKS */}
       <div className="absolute top-[41%] left-[2%] w-[68%] h-[56%] flex flex-col justify-between py-1 z-10">
         {/* ROW 1: 5 DESKS */}
         <div className="grid grid-cols-5 gap-2">
-          {/* Row 1 Desk 1: Meera (Research - Afro/Dark hair blue shirt style) */}
+          {/* Row 1 Desk 1: Meera (Research) */}
           <div className="relative flex flex-col items-center">
             <PixelDesk monitorScreenColor="cyan" accessories="mug" />
             {!meetingMode && renderDeskCharacter(research, 'meera', 'Meera')}
           </div>
 
-          {/* Row 1 Desk 2: Empty Desk */}
+          {/* Row 1 Desk 2: Ananya (Product & UX Design) */}
           <div className="relative flex flex-col items-center">
-            <PixelDesk monitorScreenColor="black" accessories="none" />
+            <PixelDesk monitorScreenColor="amber" accessories="papers" />
+            {!meetingMode && renderDeskCharacter(product, 'ananya', 'Ananya')}
           </div>
 
-          {/* Row 1 Desk 3: Rohan (CTO - Blond hair, blue jumpsuit) */}
+          {/* Row 1 Desk 3: Rohan (CTO) */}
           <div className="relative flex flex-col items-center">
             <PixelDesk monitorScreenColor="amber" accessories="mug" />
             {!meetingMode && renderDeskCharacter(cto, 'rohan', 'Rohan')}
           </div>
 
-          {/* Row 1 Desk 4: Isha (Marketing - Dark hair, white long sleeve) */}
+          {/* Row 1 Desk 4: Isha (Marketing) */}
           <div className="relative flex flex-col items-center">
             <PixelDesk monitorScreenColor="blue" accessories="papers" />
             {!meetingMode && renderDeskCharacter(marketing, 'isha', 'Isha')}
           </div>
 
-          {/* Row 1 Desk 5: Empty Desk */}
+          {/* Row 1 Desk 5: Priya (Enterprise Sales & BizDev) */}
           <div className="relative flex flex-col items-center">
             <PixelDesk monitorScreenColor="emerald" accessories="mug" />
+            {!meetingMode && renderDeskCharacter(sales, 'priya', 'Priya')}
           </div>
         </div>
 
         {/* ROW 2: 5 DESKS */}
         <div className="grid grid-cols-5 gap-2">
-          {/* Row 2 Desk 1: Empty Desk */}
+          {/* Row 2 Desk 1: Vikram (QA & Cybersecurity) */}
           <div className="relative flex flex-col items-center">
-            <PixelDesk monitorScreenColor="black" accessories="none" />
+            <PixelDesk monitorScreenColor="emerald" accessories="mug" />
+            {!meetingMode && renderDeskCharacter(qa, 'vikram', 'Vikram')}
           </div>
 
-          {/* Row 2 Desk 2: Empty Desk */}
-          <div className="relative flex flex-col items-center">
-            <PixelDesk monitorScreenColor="black" accessories="mug" />
-          </div>
-
-          {/* Row 2 Desk 3: Assistant / Dev Employee */}
+          {/* Row 2 Desk 2: Siddharth (Legal & Compliance) */}
           <div className="relative flex flex-col items-center">
             <PixelDesk monitorScreenColor="blue" accessories="papers" />
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
-              <PixelCharacter type="employee1" size={46} name="Dev" />
-            </div>
+            {!meetingMode && renderDeskCharacter(legal, 'siddharth', 'Siddharth')}
           </div>
 
-          {/* Row 2 Desk 4: Empty Desk */}
+          {/* Row 2 Desk 3: Dev (Lead Fullstack Developer) */}
           <div className="relative flex flex-col items-center">
-            <PixelDesk monitorScreenColor="black" accessories="none" />
+            <PixelDesk monitorScreenColor="blue" accessories="papers" />
+            {!meetingMode && renderDeskCharacter(dev, 'employee1', 'Dev')}
           </div>
 
-          {/* Row 2 Desk 5: Empty Desk */}
+          {/* Row 2 Desk 4: Kabir (Finance & Treasury Lead) */}
+          <div className="relative flex flex-col items-center">
+            <PixelDesk monitorScreenColor="amber" accessories="papers" />
+            {!meetingMode && renderDeskCharacter(finance, 'kabir', 'Kabir')}
+          </div>
+
+          {/* Row 2 Desk 5: Aditya (DevOps & Platform SRE - stationed right beside Memory Core racks) */}
           <div className="relative flex flex-col items-center">
             <PixelDesk monitorScreenColor="cyan" accessories="mug" />
+            {!meetingMode && renderDeskCharacter(devops, 'aditya', 'Aditya')}
           </div>
         </div>
       </div>
-
-      {/* STANDING IN AISLE (Kabir - Finance / Dev - Dark skin, black jacket standing between desks) */}
-      {!meetingMode && (
-        <div
-          onClick={(e) => {
-            e.stopPropagation();
-            sound.playClick();
-            onSelectAgent(finance);
-          }}
-          className={`absolute left-[58%] top-[65%] -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer transition-transform duration-200 ${
-            selectedAgentId === finance.id ? 'scale-110 z-30' : 'hover:scale-105'
-          }`}
-        >
-          {/* Speech / Task Status Bubble */}
-          {finance.current_task && (
-            <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#2c2621] text-[#f4ece1] text-[7px] font-black px-1.5 py-0.2 rounded border border-[#f4ece1] shadow whitespace-nowrap z-30 animate-bounce">
-              {finance.status === 'WORKING' ? `⚡ ${finance.current_task.slice(0, 14)}...` : '✓ Ready'}
-            </div>
-          )}
-
-          {selectedAgentId === finance.id && (
-            <div className="absolute -inset-1 rounded-full bg-amber-400/40 animate-ping -z-10" />
-          )}
-
-          <PixelCharacter type="kabir" isWorking={finance.status === 'WORKING'} name="Kabir" size={48} />
-        </div>
-      )}
 
       {/* 4. MEMORY CORE SERVER ROOM (Bottom-Right) */}
       <div

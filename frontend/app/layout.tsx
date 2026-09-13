@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI ORG OS v1.0.0 - DEBUGGERS INC.",
+  title: "AI ORGANIZATION NULL POINTERS INC.",
   description: "Virtual AI Organization Dashboard",
 };
 

@@ -69,6 +69,11 @@ const AgentNode = ({ data }: NodeProps) => {
     if (name.includes('CTO')) return <Cpu className="w-4 h-4 text-emerald-800" />;
     if (name.includes('Marketing')) return <Bot className="w-4 h-4 text-purple-800" />;
     if (name.includes('Development') || name.includes('Finance')) return <Bot className="w-4 h-4 text-amber-800" />;
+    if (name.includes('Product')) return <Bot className="w-4 h-4 text-pink-800" />;
+    if (name.includes('QA') || name.includes('Security')) return <ShieldCheck className="w-4 h-4 text-emerald-800" />;
+    if (name.includes('DevOps') || name.includes('SRE')) return <Cpu className="w-4 h-4 text-teal-800" />;
+    if (name.includes('Sales') || name.includes('BizDev')) return <Bot className="w-4 h-4 text-amber-900" />;
+    if (name.includes('Legal') || name.includes('Ethics')) return <FileText className="w-4 h-4 text-slate-800" />;
     if (name.includes('Memory')) return <Database className="w-4 h-4 text-emerald-800" />;
     if (name.includes('Decision')) return <ShieldCheck className="w-4 h-4 text-amber-800" />;
     return <FileText className="w-4 h-4 text-emerald-800" />;

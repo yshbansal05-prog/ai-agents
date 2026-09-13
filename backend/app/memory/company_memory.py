@@ -499,4 +499,65 @@ class CompanyMemoryManager:
             "wallet_address": os.getenv("AVM_ADDRESS", "BJSAKUOZAQJGH2Y3LEPVVJY5HLKEPP6EI4XFNOZPBVE4VBVVCNZUB434CQ")
         }
 
+    @staticmethod
+    async def add_message(
+        db: AsyncSession,
+        company_id: str,
+        sender_agent: str,
+        recipient_agent: str,
+        content: str,
+        type: str = "DIRECT"
+    ) -> MessageModel:
+        msg = MessageModel(
+            company_id=company_id,
+            sender_agent=sender_agent,
+            recipient_agent=recipient_agent,
+            content=content,
+            type=type,
+            timestamp=datetime.now(timezone.utc)
+        )
+        db.add(msg)
+        await db.commit()
+        await db.refresh(msg)
+
+        await event_manager.broadcast(
+            company_id,
+            "message_sent",
+            {
+                "id": msg.id,
+                "company_id": company_id,
+                "sender_agent": sender_agent,
+                "recipient_agent": recipient_agent,
+                "content": content,
+                "type": type,
+                "timestamp": msg.timestamp.isoformat() if msg.timestamp else None
+            }
+        )
+        return msg
+
+    @staticmethod
+    async def get_messages(
+        db: AsyncSession,
+        company_id: str
+    ) -> List[Dict[str, Any]]:
+        result = await db.execute(
+            select(MessageModel)
+            .where(MessageModel.company_id == company_id)
+            .order_by(MessageModel.timestamp.asc())
+        )
+        messages = result.scalars().all()
+        return [
+            {
+                "id": m.id,
+                "company_id": m.company_id,
+                "sender_agent": m.sender_agent,
+                "recipient_agent": m.recipient_agent,
+                "content": m.content,
+                "type": m.type,
+                "timestamp": m.timestamp.isoformat() if m.timestamp else None
+            }
+            for m in messages
+        ]
+
+
 

@@ -17,7 +17,8 @@ import {
   ExternalLink,
   ChevronRight,
   Braces,
-  Cpu
+  Cpu,
+  Play
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { Memory } from '@/types';
@@ -48,6 +49,10 @@ export default function CodeStudioModal({
   const [copied, setCopied] = useState<boolean>(false);
   const [isZipping, setIsZipping] = useState<boolean>(false);
   const [activeView, setActiveView] = useState<'CODE' | 'API_INSPECTOR'>('CODE');
+  const [testedEndpoint, setTestedEndpoint] = useState<string | null>(null);
+  const [testPayload, setTestPayload] = useState<string>('{\n  "title": "Autonomous Creator Pass",\n  "tier": "PREMIUM",\n  "amount_usdc": 10.0\n}');
+  const [testResponse, setTestResponse] = useState<any | null>(null);
+  const [isSendingRequest, setIsSendingRequest] = useState<boolean>(false);
 
   // Extract Dev and CTO deliverables from memory
   const devMemory = useMemo(() => {
@@ -655,10 +660,12 @@ python-dotenv>=1.0.0
                         ? 'bg-amber-500 text-white'
                         : 'bg-rose-600 text-white';
 
+                    const isExpanded = testedEndpoint === ep.path;
+
                     return (
                       <div
                         key={idx}
-                        className="bg-[#faf6f0] border-2 border-[#2c2621] rounded-lg p-3 space-y-2 shadow-xs"
+                        className="bg-[#faf6f0] border-2 border-[#2c2621] rounded-lg p-3 space-y-2.5 shadow-xs"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
@@ -671,13 +678,108 @@ python-dotenv>=1.0.0
                               {ep.path}
                             </span>
                           </div>
-                          <span className="text-[9px] text-[#6b5b52] font-semibold">
-                            Authenticated: Bearer JWT
-                          </span>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[9px] text-[#6b5b52] font-semibold">
+                              Bearer JWT
+                            </span>
+                            <button
+                              onClick={() => {
+                                sound.playClick();
+                                setTestedEndpoint(isExpanded ? null : ep.path);
+                                setTestResponse(null);
+                              }}
+                              className="px-2 py-0.5 bg-[#2c2621] hover:bg-[#443831] text-amber-400 rounded text-[8.5px] font-black uppercase flex items-center gap-1 transition cursor-pointer"
+                            >
+                              <Play className="w-2.5 h-2.5 fill-amber-400" />
+                              <span>{isExpanded ? 'Close Runner' : 'Try It Out'}</span>
+                            </button>
+                          </div>
                         </div>
+
                         <p className="text-[10px] text-[#4a3e37] leading-relaxed">
                           {ep.desc}
                         </p>
+
+                        {/* Interactive Playground Runner */}
+                        {isExpanded && (
+                          <div className="bg-[#ebdcd0] border-2 border-[#2c2621] rounded p-2.5 space-y-2 animate-in fade-in duration-150">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-black uppercase text-[#6b5b52]">
+                                Request Payload (JSON)
+                              </span>
+                              <button
+                                onClick={() => {
+                                  sound.playClick();
+                                  setIsSendingRequest(true);
+                                  setTimeout(() => {
+                                    sound.playSuccess();
+                                    const isPost = method === 'POST';
+                                    let parsed: any = {};
+                                    try {
+                                      parsed = JSON.parse(testPayload);
+                                    } catch {
+                                      parsed = { raw: testPayload };
+                                    }
+                                    setTestResponse({
+                                      status: isPost ? 201 : 200,
+                                      statusText: isPost ? 'Created' : 'OK',
+                                      latency: Math.floor(Math.random() * 16) + 12,
+                                      data: isPost
+                                        ? {
+                                            id: `rec_${Date.now()}`,
+                                            ...parsed,
+                                            status: 'ACTIVE',
+                                            created_at: new Date().toISOString()
+                                          }
+                                        : [
+                                            { id: '1', name: 'Verified Entry Alpha', status: 'ACTIVE' },
+                                            { id: '2', name: 'Verified Entry Beta', status: 'ACTIVE' }
+                                          ]
+                                    });
+                                    setIsSendingRequest(false);
+                                  }, 350);
+                                }}
+                                disabled={isSendingRequest}
+                                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white rounded text-[8.5px] font-black uppercase flex items-center gap-1 transition cursor-pointer shadow-xs"
+                              >
+                                <Play className="w-2.5 h-2.5 fill-white" />
+                                <span>{isSendingRequest ? 'Executing...' : 'Send Request'}</span>
+                              </button>
+                            </div>
+
+                            {method === 'POST' || method === 'PUT' ? (
+                              <textarea
+                                value={testPayload}
+                                onChange={(e) => setTestPayload(e.target.value)}
+                                rows={3}
+                                className="w-full bg-[#1e1e1e] text-emerald-400 font-mono text-[9.5px] p-2 rounded border border-[#2c2621] focus:outline-none"
+                              />
+                            ) : (
+                              <div className="text-[9px] text-[#6b5b52] italic bg-[#faf6f0] p-1.5 rounded border border-[#d8c3b1]">
+                                Query Parameters: None required. Click "Send Request" to simulate response.
+                              </div>
+                            )}
+
+                            {/* Response Display */}
+                            {testResponse && (
+                              <div className="bg-[#1e1e1e] border border-[#2c2621] rounded p-2 text-xs space-y-1 font-mono">
+                                <div className="flex items-center justify-between text-[9px] border-b border-[#333333] pb-1">
+                                  <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                                    <span className="px-1 py-0.2 bg-emerald-950 text-emerald-300 rounded text-[8px]">
+                                      {testResponse.status} {testResponse.statusText}
+                                    </span>
+                                    <span>Time: {testResponse.latency}ms</span>
+                                  </span>
+                                  <span className="text-[#888888]">application/json</span>
+                                </div>
+                                <pre className="text-[9px] text-[#d4d4d4] overflow-x-auto max-h-32">
+                                  {JSON.stringify(testResponse.data, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         <div className="bg-[#ebdcd0] border border-[#d8c3b1] rounded p-2 text-[9px] font-mono text-[#2c2621] flex items-center justify-between">
                           <span>Responses: 200 OK, 400 Bad Request, 401 Unauthorized</span>
                           <span className="text-[8px] font-black text-emerald-800">SCHEMA VERIFIED</span>

@@ -197,10 +197,10 @@ export default function FinalReportView({ reportContent, companyGoal }: FinalRep
             <div>
               <div className="flex items-center gap-2">
                 <span className="bg-slate-900 text-white font-mono font-black px-2 py-0.5 rounded text-xs">
-                  AI ORG OS
+                  AI ORGANIZATION
                 </span>
                 <h1 className="text-base font-black uppercase tracking-tight text-slate-900">
-                  EXECUTIVE DELIVERABLE STRATEGY REPORT
+                  NULL POINTERS INC.
                 </h1>
               </div>
               <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">

@@ -18,6 +18,8 @@ import StatsModal from '@/components/StatsModal';
 import SettingsModal from '@/components/SettingsModal';
 import ExecutiveReportModal from '@/components/ExecutiveReportModal';
 import CodeStudioModal from '@/components/CodeStudioModal';
+import CompanyCommsModal from '@/components/CompanyCommsModal';
+import GovernanceModal from '@/components/GovernanceModal';
 
 import {
   INITIAL_COMPANY,
@@ -42,8 +44,11 @@ import {
   Zap,
   FileText,
   Coins,
-  Code2
+  Code2,
+  MessageSquare,
+  Scale
 } from 'lucide-react';
+import { Message } from '@/types';
 
 export default function Dashboard() {
   const [goalInput, setGoalInput] = useState<string>(INITIAL_COMPANY.goal);
@@ -68,6 +73,9 @@ export default function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
   const [isCodeStudioOpen, setIsCodeStudioOpen] = useState<boolean>(false);
+  const [isCommsOpen, setIsCommsOpen] = useState<boolean>(false);
+  const [isGovernanceOpen, setIsGovernanceOpen] = useState<boolean>(false);
+  const [messages, setMessages] = useState<Message[]>([]);
 
   const hasCodeDeliverables = Boolean(
     company.final_report ||
@@ -210,6 +218,9 @@ export default function Dashboard() {
           }
         } else if (data.event_type === 'decision_made') {
           setDecisions((prev) => [...prev, data.data]);
+        } else if (data.event_type === 'message_sent') {
+          sound.playTick();
+          setMessages((prev) => [...prev, data.data]);
         } else if (data.event_type === 'payment_requested') {
           sound.playTick();
           setLogs((prev) => [
@@ -315,7 +326,7 @@ export default function Dashboard() {
     const goalToUse = customGoal.trim();
     setCompany({
       id: `comp-${Date.now()}`,
-      name: 'AI ORG OS V1.0.0 - DEBUGGERS INC.',
+      name: 'AI ORGANIZATION NULL POINTERS INC.',
       goal: goalToUse,
       status: 'IN_PROGRESS',
       created_at: new Date().toISOString()
@@ -554,7 +565,7 @@ export default function Dashboard() {
     const step4 = setTimeout(() => {
       sound.playSuccess();
       const finalDoc = `# EXECUTIVE STRATEGY DELIVERABLE
-**Company:** AI ORG OS V1.0.0 - DEBUGGERS INC.
+**Company:** AI ORGANIZATION NULL POINTERS INC.
 **Objective:** ${goalToUse}
 
 ## 1. Market Opportunity & Validation
@@ -645,7 +656,7 @@ export default function Dashboard() {
     setIsRunning(true);
     setCompany({
       id: `comp-${Date.now()}`,
-      name: 'AI ORG OS V1.0.0 - DEBUGGERS INC.',
+      name: 'AI ORGANIZATION NULL POINTERS INC.',
       goal: goalToUse.trim(),
       status: 'IN_PROGRESS',
       final_report: undefined,
@@ -653,7 +664,7 @@ export default function Dashboard() {
     });
 
     try {
-      const createData = await api.createCompany(goalToUse.trim(), 'AI ORG OS V1.0.0 - DEBUGGERS INC.');
+      const createData = await api.createCompany(goalToUse.trim(), 'AI ORGANIZATION NULL POINTERS INC.');
       const companyId = createData.company_id;
       setCompany((prev) => ({ ...prev, id: companyId }));
 
@@ -703,12 +714,38 @@ export default function Dashboard() {
               />
             </div>
             <div className="text-[11px] sm:text-xs font-black tracking-wider text-[#2c2621] uppercase">
-              AI ORG OS <span className="text-[#8c7b70] text-[9px] sm:text-[10px] font-bold">V1.0.0 - DEBUGGERS INC.</span>
+              AI ORGANIZATION <span className="text-[#8c7b70] text-[9px] sm:text-[10px] font-bold">NULL POINTERS INC.</span>
             </div>
           </div>
 
           {/* Right Action Controls (matching screenshot) */}
           <div className="flex items-center space-x-1.5">
+            {/* Live Comms Slack Button */}
+            <button
+              onClick={() => {
+                sound.playClick();
+                setIsCommsOpen(true);
+              }}
+              className="px-2.5 py-1 bg-[#2c2621] hover:bg-[#443831] text-amber-400 border-2 border-[#2c2621] rounded text-[10px] font-black flex items-center gap-1.5 shadow cursor-pointer transition"
+              title="Open Company Comms & Slack Wire"
+            >
+              <MessageSquare className="w-3 h-3 text-amber-400" />
+              <span>Slack ({messages.length})</span>
+            </button>
+
+            {/* Board Governance Button */}
+            <button
+              onClick={() => {
+                sound.playClick();
+                setIsGovernanceOpen(true);
+              }}
+              className="px-2.5 py-1 bg-purple-950 hover:bg-purple-900 text-purple-200 border-2 border-[#2c2621] rounded text-[10px] font-black flex items-center gap-1.5 shadow cursor-pointer transition"
+              title="Board of Directors Governance & Steering"
+            >
+              <Scale className="w-3 h-3 text-purple-300" />
+              <span>Governance</span>
+            </button>
+
             {hasCodeDeliverables && (
               <button
                 onClick={() => {
@@ -818,6 +855,8 @@ export default function Dashboard() {
                   onSelectAgent={(agent) => setSelectedAgent(agent)}
                   onRefreshTreasury={() => loadTreasury(company.id)}
                   onOpenCodeStudio={() => setIsCodeStudioOpen(true)}
+                  onOpenComms={() => setIsCommsOpen(true)}
+                  messages={messages}
                 />
               </div>
             </div>
@@ -954,6 +993,44 @@ export default function Dashboard() {
         onClose={() => setIsCodeStudioOpen(false)}
         memories={memories}
         companyGoal={company.goal || goalInput}
+      />
+
+      {/* COMPANY COMMS / SLACK MODAL */}
+      <CompanyCommsModal
+        isOpen={isCommsOpen}
+        onClose={() => setIsCommsOpen(false)}
+        messages={messages}
+        agents={agents}
+        onSendMessage={async (content, recipient) => {
+          if (company.id) {
+            const msg = await api.sendMessage(company.id, content, recipient);
+            setMessages((prev) => [...prev, msg]);
+          }
+        }}
+        companyGoal={company.goal || goalInput}
+      />
+
+      {/* BOARD GOVERNANCE & STEERING MODAL */}
+      <GovernanceModal
+        isOpen={isGovernanceOpen}
+        onClose={() => setIsGovernanceOpen(false)}
+        companyId={company.id}
+        companyGoal={company.goal || goalInput}
+        transactions={treasury?.transactions || []}
+        decisions={decisions}
+        onDecideTreasury={async (txId, action) => {
+          if (company.id) {
+            await api.decideTreasury(company.id, txId, action);
+            loadTreasury(company.id);
+          }
+        }}
+        onArbitrateConflict={async (decision, rationale, title) => {
+          if (company.id) {
+            await api.arbitrateConflict(company.id, decision, rationale, title);
+            const updated = await api.getDecisions(company.id);
+            setDecisions(updated);
+          }
+        }}
       />
     </main>
   );

@@ -2,7 +2,20 @@
 
 import React from 'react';
 
-export type CharacterType = 'arnav' | 'meera' | 'rohan' | 'isha' | 'kabir' | 'employee1' | 'employee2' | 'employee3';
+export type CharacterType =
+  | 'arnav'
+  | 'meera'
+  | 'rohan'
+  | 'isha'
+  | 'kabir'
+  | 'ananya'
+  | 'vikram'
+  | 'aditya'
+  | 'priya'
+  | 'siddharth'
+  | 'employee1'
+  | 'employee2'
+  | 'employee3';
 
 interface PixelCharacterProps {
   type: CharacterType;
@@ -88,6 +101,71 @@ export default function PixelCharacter({
       pants: '#1e293b',
       shoes: '#0f172a',
       hairStyle: 'fade'
+    },
+    // 6. Ananya (Product & UX / Purple sweater, auburn hair, chic designer)
+    ananya: {
+      skin: '#f0c294',
+      skinShadow: '#d49a63',
+      hair: '#831843', // Deep magenta/burgundy
+      hairHighlight: '#9d174d',
+      eyes: '#1c1917',
+      shirt: '#7e22ce', // Royal purple sweater
+      shirtDetail: '#c084fc',
+      pants: '#1e1b4b',
+      shoes: '#0f172a',
+      hairStyle: 'parted'
+    },
+    // 7. Vikram (QA & InfoSec / Military tactical dark olive jacket)
+    vikram: {
+      skin: '#c48956',
+      skinShadow: '#9c663b',
+      hair: '#1c1917',
+      hairHighlight: '#292524',
+      eyes: '#111827',
+      shirt: '#365314', // Tactical olive green
+      shirtDetail: '#84cc16',
+      pants: '#1f2937',
+      shoes: '#030712',
+      hairStyle: 'fade'
+    },
+    // 8. Aditya (DevOps & SRE / Teal tech hoodie, headset vibes)
+    aditya: {
+      skin: '#e2b183',
+      skinShadow: '#bc8554',
+      hair: '#292524',
+      hairHighlight: '#44403c',
+      eyes: '#0f172a',
+      shirt: '#0f766e', // Deep teal hoodie
+      shirtDetail: '#2dd4bf',
+      pants: '#1e293b',
+      shoes: '#020617',
+      hairStyle: 'spiky'
+    },
+    // 9. Priya (Sales & BizDev / Terracotta amber blazer)
+    priya: {
+      skin: '#d49b6a',
+      skinShadow: '#b0794c',
+      hair: '#18181b',
+      hairHighlight: '#27272a',
+      eyes: '#18181b',
+      shirt: '#b45309', // Warm amber blazer
+      shirtDetail: '#fde68a',
+      pants: '#292524',
+      shoes: '#0c0a09',
+      hairStyle: 'bob'
+    },
+    // 10. Siddharth (Legal & Compliance / Slate gray formal suit with silver tie)
+    siddharth: {
+      skin: '#edd0b0',
+      skinShadow: '#ca9e77',
+      hair: '#27272a',
+      hairHighlight: '#3f3f46',
+      eyes: '#18181b',
+      shirt: '#334155', // Formal slate suit
+      shirtDetail: '#cbd5e1',
+      pants: '#1e293b',
+      shoes: '#020617',
+      hairStyle: 'parted'
     },
     // Fallback brown hair / worker (bottom row 3rd desk)
     employee1: {

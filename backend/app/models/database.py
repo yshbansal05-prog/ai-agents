@@ -23,6 +23,7 @@ class CompanyModel(Base):
     decisions = relationship("DecisionModel", back_populates="company", cascade="all, delete-orphan")
     logs = relationship("ActivityLogModel", back_populates="company", cascade="all, delete-orphan")
     treasury_transactions = relationship("TreasuryTransactionModel", back_populates="company", cascade="all, delete-orphan")
+    messages = relationship("MessageModel", back_populates="company", cascade="all, delete-orphan")
 
 
 class AgentModel(Base):
@@ -68,6 +69,8 @@ class MessageModel(Base):
     content = Column(Text, nullable=False)
     type = Column(String, default="INFO")
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    company = relationship("CompanyModel", back_populates="messages")
 
 class MemoryModel(Base):
     __tablename__ = "memories"

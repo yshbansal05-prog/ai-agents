@@ -2,7 +2,7 @@ import { Agent, Task, Memory, Decision, ActivityLog, Company } from '@/types';
 
 export const INITIAL_COMPANY: Company = {
   id: 'comp-01',
-  name: 'AI ORG OS V1.0.0 - DEBUGGERS INC.',
+  name: 'AI ORGANIZATION NULL POINTERS INC.',
   goal: 'Build an AI-powered internship platform for college students.',
   status: 'IN_PROGRESS',
   created_at: '2026-08-19T11:34:00Z'
@@ -56,8 +56,68 @@ export const INITIAL_AGENTS: Agent[] = [
     objective: 'Build unit economics financial model, compute infra pricing projections, calculate burn rate, and prototype backend modules.',
     status: 'COMPLETED',
     current_task: 'Unit economics model finalized ($14.20 CAC / $180 LTV).',
-    capabilities: ['Unit Economics', 'Cost-to-Serve Modeling', 'Runway Planning', 'Fullstack Prototyping', 'Database Optimization'],
+    capabilities: ['Unit Economics', 'Cost-to-Serve Modeling', 'Runway Planning', 'Financial Projections', 'Treasury Gates'],
     dependencies: ['agent-ceo', 'agent-cto']
+  },
+  {
+    id: 'agent-dev',
+    name: 'Dev Sharma',
+    role: 'Lead Fullstack Developer',
+    objective: 'Implement end-to-end backend microservices, database schemas, responsive UI components, and API integration contracts.',
+    status: 'WORKING',
+    current_task: 'Coding Next.js 15 UI and FastAPI microservices.',
+    capabilities: ['Fullstack Architecture', 'FastAPI & Python', 'React / Next.js', 'PostgreSQL & DDL', 'REST APIs'],
+    dependencies: ['agent-cto', 'agent-product']
+  },
+  {
+    id: 'agent-product',
+    name: 'Ananya Roy',
+    role: 'Lead Product Designer & UX',
+    objective: 'Transform user research into intuitive design flows, interactive wireframes, component design tokens, and user experience specs.',
+    status: 'WORKING',
+    current_task: 'Drafting Student Interview & Matching UI Wireframe.',
+    capabilities: ['UI/UX Design', 'User Journey Mapping', 'Design Systems', 'Figma Prototyping', 'Accessibility'],
+    dependencies: ['agent-research']
+  },
+  {
+    id: 'agent-qa',
+    name: 'Vikram Rathore',
+    role: 'Head of QA & Cybersecurity',
+    objective: 'Automated vulnerability scanning, OWASP security auditing, penetration testing, and continuous integration test suites.',
+    status: 'COMPLETED',
+    current_task: 'Zero-trust security audit & unit test suite passed (98% coverage).',
+    capabilities: ['OWASP Security Scan', 'Penetration Testing', 'E2E Testing', 'Vulnerability Assessment', 'API Security'],
+    dependencies: ['agent-cto']
+  },
+  {
+    id: 'agent-devops',
+    name: 'Aditya Chen',
+    role: 'Lead DevOps & Cloud SRE',
+    objective: 'Architect resilient multi-region infrastructure, Docker containers, CI/CD auto-deployments, and memory rack telemetry.',
+    status: 'WORKING',
+    current_task: 'Configuring Edge CDN caching & Kubernetes cluster manifests.',
+    capabilities: ['Kubernetes & Docker', 'CI/CD Pipelines', 'Cloud Cost Guardrails', 'Uptime SLA Monitoring', 'Terraform'],
+    dependencies: ['agent-cto', 'agent-finance']
+  },
+  {
+    id: 'agent-sales',
+    name: 'Priya Nair',
+    role: 'VP of Enterprise Sales & BizDev',
+    objective: 'Drive enterprise university recruitment licenses, employer partnership funnels, and contract revenue monetization.',
+    status: 'WAITING',
+    current_task: 'Finalizing B2B university career center pricing tiers.',
+    capabilities: ['Enterprise Sales', 'B2B Outbound Cadence', 'University Partnerships', 'Deal Pipeline', 'Contract Negotiation'],
+    dependencies: ['agent-marketing']
+  },
+  {
+    id: 'agent-legal',
+    name: 'Siddharth Mehta',
+    role: 'Chief Legal & Compliance Counsel',
+    objective: 'Draft FERPA/GDPR student privacy frameworks, terms of service, AI model copyright disclaimers, and corporate policies.',
+    status: 'COMPLETED',
+    current_task: 'Student privacy & AI compliance manifest ratified.',
+    capabilities: ['FERPA / GDPR Compliance', 'Terms of Service', 'AI IP Governance', 'Risk Management', 'Regulatory Filings'],
+    dependencies: ['agent-ceo']
   }
 ];
 
@@ -116,6 +176,61 @@ export const INITIAL_TASKS: Task[] = [
     dependencies: ['task-2', 'task-4'],
     result: undefined,
     created_at: '2026-08-19T11:34:20Z'
+  },
+  {
+    id: 'task-6',
+    title: 'Student Resume & Match UI Wireframes',
+    description: 'Design high-fidelity user journeys for instant feedback and dual-sided recruiter dashboards.',
+    assigned_agent: 'Ananya Roy (Product)',
+    status: 'RUNNING',
+    priority: 'P1 High',
+    dependencies: ['task-1'],
+    result: undefined,
+    created_at: '2026-08-19T11:34:25Z'
+  },
+  {
+    id: 'task-7',
+    title: 'OWASP Security & Penetration Vulnerability Audit',
+    description: 'Conduct zero-trust penetration audit across FastAPI endpoints and ensure zero plain-text token leaks.',
+    assigned_agent: 'Vikram Rathore (QA)',
+    status: 'COMPLETED',
+    priority: 'P0 Critical',
+    dependencies: ['task-2'],
+    result: 'Zero high/critical OWASP vulnerabilities. E2E auth test suite completed with 98% branch coverage.',
+    created_at: '2026-08-19T11:34:30Z'
+  },
+  {
+    id: 'task-8',
+    title: 'Multi-Region Kubernetes & Edge Caching Manifests',
+    description: 'Configure Cloudflare Workers Edge routing, container orchestration, and real-time telemetry pipelines.',
+    assigned_agent: 'Aditya Chen (DevOps)',
+    status: 'RUNNING',
+    priority: 'P1 High',
+    dependencies: ['task-2', 'task-4'],
+    result: undefined,
+    created_at: '2026-08-19T11:34:35Z'
+  },
+  {
+    id: 'task-9',
+    title: 'Tier-1 University Enterprise Licensing Terms',
+    description: 'Model $24k/year enterprise SaaS tiers for career centers with SLA support and ATS integrations.',
+    assigned_agent: 'Priya Nair (Sales)',
+    status: 'PENDING',
+    priority: 'P2 Medium',
+    dependencies: ['task-3'],
+    result: undefined,
+    created_at: '2026-08-19T11:34:40Z'
+  },
+  {
+    id: 'task-10',
+    title: 'FERPA Compliance & Student Privacy Manifest',
+    description: 'Author institutional data security terms guaranteeing student privacy and AI model licensing terms.',
+    assigned_agent: 'Siddharth Mehta (Legal)',
+    status: 'COMPLETED',
+    priority: 'P0 Critical',
+    dependencies: ['task-1'],
+    result: 'FERPA & GDPR compliance guidelines signed off; Terms of Service and Data Processing Addendum published.',
+    created_at: '2026-08-19T11:34:45Z'
   }
 ];
 

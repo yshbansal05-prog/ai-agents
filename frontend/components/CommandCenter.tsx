@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ActivityLog, Memory, Task, Decision, Agent, TreasurySummary } from '@/types';
+import { ActivityLog, Memory, Task, Decision, Agent, TreasurySummary, Message } from '@/types';
 import { sound } from '@/utils/sound';
-import { Terminal, Pause, Play, Trash2, Activity, CheckSquare, Scale, BookOpen, Users, Sparkles, Send, Coins, FileText, Code2 } from 'lucide-react';
+import { Terminal, Pause, Play, Trash2, Activity, CheckSquare, Scale, BookOpen, Users, Sparkles, Send, Coins, FileText, Code2, MessageSquare } from 'lucide-react';
 import TreasuryPanel from './TreasuryPanel';
 import ExecutiveReportModal from './ExecutiveReportModal';
 
@@ -17,12 +17,14 @@ interface CommandCenterProps {
   reportContent: string | null;
   companyGoal: string;
   isPaused: boolean;
+  messages?: Message[];
   onTogglePause: () => void;
   onClearLogs: () => void;
   onSendPrompt?: (prompt: string) => void;
   onSelectAgent?: (agent: Agent) => void;
   onRefreshTreasury?: () => void;
   onOpenCodeStudio?: () => void;
+  onOpenComms?: () => void;
 }
 
 export default function CommandCenter({
@@ -35,14 +37,16 @@ export default function CommandCenter({
   reportContent,
   companyGoal = 'AI Organization Objective',
   isPaused,
+  messages = [],
   onTogglePause,
   onClearLogs,
   onSendPrompt,
   onSelectAgent,
   onRefreshTreasury,
-  onOpenCodeStudio
+  onOpenCodeStudio,
+  onOpenComms
 }: CommandCenterProps) {
-  const [activeTab, setActiveTab] = useState<'ACTIVITY' | 'TASKS' | 'DECISIONS' | 'MEMORY' | 'AGENTS' | 'TREASURY' | 'REPORT' | 'CODE'>('ACTIVITY');
+  const [activeTab, setActiveTab] = useState<'ACTIVITY' | 'TASKS' | 'DECISIONS' | 'MEMORY' | 'AGENTS' | 'TREASURY' | 'REPORT' | 'CODE' | 'COMMS'>('ACTIVITY');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [promptInput, setPromptInput] = useState('');
   const logScrollRef = useRef<HTMLDivElement>(null);
@@ -183,7 +187,7 @@ export default function CommandCenter({
       )}
 
       {/* 2. TAB BUTTONS BAR */}
-      <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 border-b-2 border-[#2c2621] pb-1.5 mb-1.5">
+      <div className="grid grid-cols-4 sm:grid-cols-9 gap-1 border-b-2 border-[#2c2621] pb-1.5 mb-1.5">
         {[
           { id: 'ACTIVITY', label: 'ACTIVITY', icon: Activity },
           { id: 'TASKS', label: 'TASKS', icon: CheckSquare },
@@ -192,6 +196,7 @@ export default function CommandCenter({
           { id: 'AGENTS', label: 'AGENTS', icon: Users },
           { id: 'TREASURY', label: 'TREASURY', icon: Coins },
           { id: 'CODE', label: 'CODE', icon: Code2 },
+          { id: 'COMMS', label: 'COMMS', icon: MessageSquare },
           ...(reportContent ? [{ id: 'REPORT', label: 'REPORT', icon: FileText }] : [])
         ].map((tab) => {
           const Icon = tab.icon;
@@ -453,6 +458,44 @@ export default function CommandCenter({
                 {devDeliverables?.code_deliverable || '# FastAPI Controller Implementation'}
               </pre>
             </div>
+          </div>
+        )}
+
+        {/* Tab 9: COMMS */}
+        {activeTab === 'COMMS' && (
+          <div className="space-y-2 p-1">
+            <div className="flex items-center justify-between border-b border-[#d8c3b1] pb-1">
+              <span className="text-[8px] font-black uppercase text-[#6b5b52]">INTER-AGENT WIRE ({messages.length})</span>
+              {onOpenComms && (
+                <button
+                  onClick={() => {
+                    sound.playClick();
+                    onOpenComms();
+                  }}
+                  className="text-[7.5px] px-2 py-0.5 bg-[#2c2621] hover:bg-[#443831] text-amber-400 rounded font-bold uppercase transition flex items-center gap-1 cursor-pointer"
+                >
+                  <MessageSquare className="w-2.5 h-2.5" />
+                  <span>Open Company Slack</span>
+                </button>
+              )}
+            </div>
+            {messages.length === 0 ? (
+              <div className="text-[9px] text-[#8c7b70] italic p-3 text-center bg-[#faf6f0] rounded border border-[#d8c3b1]">
+                No inter-agent messages dispatched yet. Dialogue starts when pipeline runs.
+              </div>
+            ) : (
+              <div className="space-y-1.5 max-h-[250px] overflow-y-auto">
+                {messages.slice(-5).map((m, idx) => (
+                  <div key={m.id || idx} className="bg-[#faf6f0] border border-[#2c2621] rounded p-1.5 space-y-0.5 text-[8.5px]">
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-[#2c2621]">{m.sender_agent} ➔ {m.recipient_agent}</span>
+                      <span className="text-[7px] px-1 bg-[#2c2621] text-[#f4ece1] rounded font-bold uppercase">{m.type || 'DIRECT'}</span>
+                    </div>
+                    <p className="text-[#4a3e37] leading-relaxed line-clamp-2">{m.content}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

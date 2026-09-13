@@ -60,6 +60,15 @@ export class ApiService {
     return await res.json();
   }
 
+  // 3b. Fetch executive board report & synthesis
+  async getCompanyReport(companyId: string): Promise<any> {
+    const res = await fetch(`${this.baseUrl}/${companyId}/report`);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch report: ${res.statusText}`);
+    }
+    return await res.json();
+  }
+
   // 4. Fetch all agents
   async getAgents(companyId: string): Promise<Agent[]> {
     const res = await fetch(`${this.baseUrl}/${companyId}/agents`);
@@ -124,7 +133,51 @@ export class ApiService {
     return await res.json();
   }
 
-  // 11. Fetch treasury posture & transactions
+  // 11. Send user message to company comms
+  async sendMessage(companyId: string, content: string, recipient: string = '@All'): Promise<Message> {
+    const res = await fetch(`${this.baseUrl}/${companyId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sender_agent: 'Human Executive (Board)',
+        recipient_agent: recipient,
+        content,
+        type: 'DIRECTIVE'
+      })
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to send message: ${res.statusText}`);
+    }
+    return await res.json();
+  }
+
+  // 12. Decide on pending treasury transaction
+  async decideTreasury(companyId: string, txId: string, action: 'APPROVE' | 'VETO'): Promise<any> {
+    const res = await fetch(`${this.baseUrl}/${companyId}/treasury/${txId}/decide`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to decide on treasury transaction: ${res.statusText}`);
+    }
+    return await res.json();
+  }
+
+  // 13. Arbitrate conflict as Board
+  async arbitrateConflict(companyId: string, decision: string, rationale: string, title?: string): Promise<any> {
+    const res = await fetch(`${this.baseUrl}/${companyId}/governance/arbitrate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision, rationale, title })
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to arbitrate conflict: ${res.statusText}`);
+    }
+    return await res.json();
+  }
+
+  // 14. Fetch treasury posture & transactions
   async getTreasury(companyId?: string): Promise<any> {
     const url = companyId ? `${this.baseUrl}/${companyId}/treasury` : `${this.baseUrl}/treasury`;
     const res = await fetch(url);
@@ -134,7 +187,7 @@ export class ApiService {
     return await res.json();
   }
 
-  // 12. SSE events endpoint URL
+  // 15. SSE events endpoint URL
   getEventsUrl(companyId: string): string {
     return `${this.baseUrl}/${companyId}/events`;
   }
