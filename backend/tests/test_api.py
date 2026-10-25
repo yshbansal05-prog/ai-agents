@@ -41,11 +41,11 @@ async def test_company_lifecycle_api(async_client: AsyncClient):
     assert comp_data["id"] == company_id
     assert comp_data["name"] == "SecureAI Corp"
 
-    # 3. Get initialized 5 agents
+    # 3. Get initialized agents (11 departments)
     agents_res = await async_client.get(f"/api/company/{company_id}/agents")
     assert agents_res.status_code == 200
     agents = agents_res.json()
-    assert len(agents) == 5
+    assert len(agents) == 11
     agent_roles = [a["role"] for a in agents]
     assert any("CEO" in r for r in agent_roles)
     assert any("Research" in r or "Market" in r for r in agent_roles)
