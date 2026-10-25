@@ -145,10 +145,11 @@ class TreasuryService:
             "INFO"
         )
 
+        x402_url = os.getenv("X402_SERVICE_URL", cls.X402_SERVICE_URL).rstrip("/")
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 res = await client.post(
-                    f"{cls.X402_SERVICE_URL}/api/x402/pay-and-fetch",
+                    f"{x402_url}/api/x402/pay-and-fetch",
                     json={"domain": domain}
                 )
                 res_data = res.json()

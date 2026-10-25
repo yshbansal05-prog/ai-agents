@@ -31,23 +31,46 @@ function normalizeApiUrl(url?: string): string {
 export const DEFAULT_API_BASE = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL);
 
 export class ApiService {
-  private baseUrl: string;
+  private customBaseUrl?: string;
 
-  constructor(baseUrl: string = DEFAULT_API_BASE) {
-    this.baseUrl = normalizeApiUrl(baseUrl);
+  constructor(baseUrl?: string) {
+    if (baseUrl && baseUrl !== 'http://localhost:8000/api/company') {
+      this.customBaseUrl = baseUrl;
+    }
   }
 
   setBaseUrl(url: string) {
-    this.baseUrl = normalizeApiUrl(url);
+    this.customBaseUrl = url;
   }
 
   getBaseUrl(): string {
-    return this.baseUrl;
+    if (this.customBaseUrl) {
+      return normalizeApiUrl(this.customBaseUrl);
+    }
+    // Server-side in Vercel: use the bound service variable BACKEND_URL at runtime
+    if (typeof window === 'undefined' && process.env.BACKEND_URL) {
+      const base = process.env.BACKEND_URL.replace(/\/$/, '');
+      return base.includes('/api/company') ? base : `${base}/api/company`;
+    }
+    // Client-side in browser: if NEXT_PUBLIC_API_URL is set, use it; otherwise use relative path /api/company
+    if (typeof window !== 'undefined') {
+      if (process.env.NEXT_PUBLIC_API_URL) {
+        const base = process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
+        return base.includes('/api/company') ? base : `${base}/api/company`;
+      }
+      // If running on localhost:3000 without a proxy, fall back to localhost:8000
+      if (window.location.port === '3000' && window.location.hostname === 'localhost') {
+        return 'http://localhost:8000/api/company';
+      }
+      // Default to relative path for same-origin deployments (like Vercel multi-service)
+      return '/api/company';
+    }
+    return DEFAULT_API_BASE;
   }
 
   // 1. Create a new organization with goal
   async createCompany(goal: string, name: string = 'AI Organization'): Promise<{ company_id: string; name: string; goal: string; status: string }> {
-    const res = await fetch(`${this.baseUrl}/create`, {
+    const res = await fetch(`${this.getBaseUrl()}/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ goal, name })
@@ -60,7 +83,7 @@ export class ApiService {
 
   // 2. Trigger multi-agent pipeline execution
   async runCompany(companyId: string): Promise<{ message: string; company_id: string }> {
-    const res = await fetch(`${this.baseUrl}/${companyId}/run`, {
+    const res = await fetch(`${this.getBaseUrl()}/${companyId}/run`, {
       method: 'POST'
     });
     if (!res.ok) {
@@ -71,7 +94,7 @@ export class ApiService {
 
   // 3. Fetch company metadata & final report
   async getCompany(companyId: string): Promise<Company> {
-    const res = await fetch(`${this.baseUrl}/${companyId}`);
+    const res = await fetch(`${this.getBaseUrl()}/${companyId}`);
     if (!res.ok) {
       throw new Error(`Failed to fetch company: ${res.statusText}`);
     }
@@ -80,7 +103,7 @@ export class ApiService {
 
   // 3b. Fetch executive board report & synthesis
   async getCompanyReport(companyId: string): Promise<any> {
-    const res = await fetch(`${this.baseUrl}/${companyId}/report`);
+    const res = await fetch(`${this.getBaseUrl()}/${companyId}/report`);
     if (!res.ok) {
       throw new Error(`Failed to fetch report: ${res.statusText}`);
     }
@@ -89,7 +112,7 @@ export class ApiService {
 
   // 4. Fetch all agents
   async getAgents(companyId: string): Promise<Agent[]> {
-    const res = await fetch(`${this.baseUrl}/${companyId}/agents`);
+    const res = await fetch(`${this.getBaseUrl()}/${companyId}/agents`);
     if (!res.ok) {
       throw new Error(`Failed to fetch agents: ${res.statusText}`);
     }
@@ -98,7 +121,7 @@ export class ApiService {
 
   // 5. Fetch all tasks
   async getTasks(companyId: string): Promise<Task[]> {
-    const res = await fetch(`${this.baseUrl}/${companyId}/tasks`);
+    const res = await fetch(`${this.getBaseUrl()}/${companyId}/tasks`);
     if (!res.ok) {
       throw new Error(`Failed to fetch tasks: ${res.statusText}`);
     }
@@ -107,7 +130,7 @@ export class ApiService {
 
   // 6. Fetch company memory
   async getMemories(companyId: string, category?: string): Promise<Memory[]> {
-    const url = category ? `${this.baseUrl}/${companyId}/memory?category=${category}` : `${this.baseUrl}/${companyId}/memory`;
+    const url = category ? `${this.getBaseUrl()}/${companyId}/memory?category=${category}` : `${this.getBaseUrl()}/${companyId}/memory`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`Failed to fetch memories: ${res.statusText}`);
@@ -117,7 +140,7 @@ export class ApiService {
 
   // 7. Search company memory by query
   async searchMemories(companyId: string, query: string, limit: number = 5): Promise<Memory[]> {
-    const res = await fetch(`${this.baseUrl}/${companyId}/search-memory?q=${encodeURIComponent(query)}&limit=${limit}`);
+    const res = await fetch(`${this.getBaseUrl()}/${companyId}/search-memory?q=${encodeURIComponent(query)}&limit=${limit}`);
     if (!res.ok) {
       throw new Error(`Failed to search memories: ${res.statusText}`);
     }
@@ -126,7 +149,7 @@ export class ApiService {
 
   // 8. Fetch decisions
   async getDecisions(companyId: string): Promise<Decision[]> {
-    const res = await fetch(`${this.baseUrl}/${companyId}/decisions`);
+    const res = await fetch(`${this.getBaseUrl()}/${companyId}/decisions`);
     if (!res.ok) {
       throw new Error(`Failed to fetch decisions: ${res.statusText}`);
     }
@@ -135,7 +158,7 @@ export class ApiService {
 
   // 9. Fetch activity logs
   async getActivityLogs(companyId: string): Promise<ActivityLog[]> {
-    const res = await fetch(`${this.baseUrl}/${companyId}/activity`);
+    const res = await fetch(`${this.getBaseUrl()}/${companyId}/activity`);
     if (!res.ok) {
       throw new Error(`Failed to fetch activity logs: ${res.statusText}`);
     }
@@ -144,7 +167,7 @@ export class ApiService {
 
   // 10. Fetch inter-agent messages
   async getMessages(companyId: string): Promise<Message[]> {
-    const res = await fetch(`${this.baseUrl}/${companyId}/messages`);
+    const res = await fetch(`${this.getBaseUrl()}/${companyId}/messages`);
     if (!res.ok) {
       throw new Error(`Failed to fetch messages: ${res.statusText}`);
     }
@@ -153,7 +176,7 @@ export class ApiService {
 
   // 11. Send user message to company comms
   async sendMessage(companyId: string, content: string, recipient: string = '@All'): Promise<Message> {
-    const res = await fetch(`${this.baseUrl}/${companyId}/messages`, {
+    const res = await fetch(`${this.getBaseUrl()}/${companyId}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -171,7 +194,7 @@ export class ApiService {
 
   // 12. Decide on pending treasury transaction
   async decideTreasury(companyId: string, txId: string, action: 'APPROVE' | 'VETO'): Promise<any> {
-    const res = await fetch(`${this.baseUrl}/${companyId}/treasury/${txId}/decide`, {
+    const res = await fetch(`${this.getBaseUrl()}/${companyId}/treasury/${txId}/decide`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action })
@@ -184,7 +207,7 @@ export class ApiService {
 
   // 13. Arbitrate conflict as Board
   async arbitrateConflict(companyId: string, decision: string, rationale: string, title?: string): Promise<any> {
-    const res = await fetch(`${this.baseUrl}/${companyId}/governance/arbitrate`, {
+    const res = await fetch(`${this.getBaseUrl()}/${companyId}/governance/arbitrate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ decision, rationale, title })
@@ -197,7 +220,7 @@ export class ApiService {
 
   // 14. Fetch treasury posture & transactions
   async getTreasury(companyId?: string): Promise<any> {
-    const url = companyId ? `${this.baseUrl}/${companyId}/treasury` : `${this.baseUrl}/treasury`;
+    const url = companyId ? `${this.getBaseUrl()}/${companyId}/treasury` : `${this.getBaseUrl()}/treasury`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`Failed to fetch treasury: ${res.statusText}`);
@@ -207,7 +230,7 @@ export class ApiService {
 
   // 15. SSE events endpoint URL
   getEventsUrl(companyId: string): string {
-    return `${this.baseUrl}/${companyId}/events`;
+    return `${this.getBaseUrl()}/${companyId}/events`;
   }
 }
 
