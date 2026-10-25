@@ -10,6 +10,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
+      - key: PYTHONPATH
+        value: .
       - key: DATABASE_URL
         value: sqlite+aiosqlite:///./ai_org.db
       - key: CORS_ORIGINS

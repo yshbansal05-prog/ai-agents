@@ -1,10 +1,17 @@
 import os
+import sys
 import logging
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 from typing import Dict, Any
-backend_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
-root_env = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
+
+# Ensure backend root is on sys.path regardless of execution CWD
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+backend_env = os.path.join(backend_dir, ".env")
+root_env = os.path.join(backend_dir, "..", ".env")
 if os.path.exists(backend_env):
     load_dotenv(backend_env)
 elif os.path.exists(root_env):
