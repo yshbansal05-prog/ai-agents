@@ -1,5 +1,6 @@
 import os
 import uuid
+import json
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey, JSON, Float
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
