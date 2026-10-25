@@ -2,11 +2,29 @@ import { Company, Agent, Task, Memory, Decision, ActivityLog, Message } from '@/
 
 // Helper to normalize the API base URL with the company route prefix
 function normalizeApiUrl(url?: string): string {
-  const base = (url || 'http://localhost:8000/api/company').replace(/\/$/, '');
-  if (!base.includes('/api/company')) {
-    return `${base}/api/company`;
+  if (url) {
+    const base = url.replace(/\/$/, '');
+    return base.includes('/api/company') ? base : `${base}/api/company`;
   }
-  return base;
+  // Server-side in Vercel: use the bound service variable BACKEND_URL
+  if (typeof window === 'undefined' && process.env.BACKEND_URL) {
+    const base = process.env.BACKEND_URL.replace(/\/$/, '');
+    return base.includes('/api/company') ? base : `${base}/api/company`;
+  }
+  // Client-side in browser: if NEXT_PUBLIC_API_URL is set, use it; otherwise use relative path /api/company
+  if (typeof window !== 'undefined') {
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      const base = process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
+      return base.includes('/api/company') ? base : `${base}/api/company`;
+    }
+    // If running on localhost:3000 without a proxy, fall back to localhost:8000
+    if (window.location.port === '3000' && window.location.hostname === 'localhost') {
+      return 'http://localhost:8000/api/company';
+    }
+    // Default to relative path for same-origin deployments (like Vercel multi-service)
+    return '/api/company';
+  }
+  return 'http://localhost:8000/api/company';
 }
 
 // Default API base URL from environment or local fallback
