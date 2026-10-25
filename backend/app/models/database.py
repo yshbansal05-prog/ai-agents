@@ -162,24 +162,54 @@ def _preserve_verified_tx(connection):
     ).fetchone()
     if not result:
         comp_row = connection.execute(text("SELECT id FROM companies ORDER BY created_at DESC LIMIT 1")).fetchone()
-        comp_id = comp_row[0] if comp_row else "654bf3cb-b7ef-465d-94b2-ccf59e877bc0"
-        tx_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
+        if comp_row:
+            comp_id = comp_row[0]
+        else:
+            comp_id = "654bf3cb-b7ef-465d-94b2-ccf59e877bc0"
+            connection.execute(
+                text("""
+                    INSERT INTO companies (id, name, goal, status, created_at, updated_at)
+                    VALUES (:id, :name, :goal, :status, :created_at, :updated_at)
+                """),
+                {
+                    "id": comp_id,
+                    "name": "AI Organization Demo Corp",
+                    "goal": "Build a decentralized subscription platform for independent creators on Algorand.",
+                    "status": "INITIALIZING",
+                    "created_at": now,
+                    "updated_at": now
+                }
+            )
+
+        tx_id = str(uuid.uuid4())
         connection.execute(
             text("""
                 INSERT INTO treasury_transactions (
                     id, company_id, agent_name, service, amount, currency, network,
                     recipient, purpose, status, tx_hash, facilitator, created_at, settled_at, metadata_json
                 ) VALUES (
-                    :id, :comp_id, 'Research Agent', 'Premium Market Intelligence', 0.01, 'USDC',
-                    'algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=',
-                    'ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA',
-                    'Acquiring premium verified market intelligence for: \\'Build a decentralized subscription platform for independent creators on Algorand.\\'',
-                    'SETTLED', 'PRNL7P2ZMVFJLWYP2E3HK5XRUUFS4IZNRDTHDQN6EEJXK5S6ONKA', 'GoPlausible',
-                    :created_at, :settled_at, '{"verified": true, "round": 67175152, "facilitator": "GoPlausible"}'
+                    :id, :company_id, :agent_name, :service, :amount, :currency, :network,
+                    :recipient, :purpose, :status, :tx_hash, :facilitator, :created_at, :settled_at, :metadata_json
                 )
             """),
-            {"id": tx_id, "comp_id": comp_id, "created_at": now, "settled_at": now}
+            {
+                "id": tx_id,
+                "company_id": comp_id,
+                "agent_name": "Research Agent",
+                "service": "Premium Market Intelligence",
+                "amount": 0.01,
+                "currency": "USDC",
+                "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=",
+                "recipient": "ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA",
+                "purpose": "Acquiring premium verified market intelligence for: Build a decentralized subscription platform for independent creators on Algorand.",
+                "status": "SETTLED",
+                "tx_hash": "PRNL7P2ZMVFJLWYP2E3HK5XRUUFS4IZNRDTHDQN6EEJXK5S6ONKA",
+                "facilitator": "GoPlausible",
+                "created_at": now,
+                "settled_at": now,
+                "metadata_json": json.dumps({"verified": True, "round": 67175152, "facilitator": "GoPlausible"})
+            }
         )
 
 async def init_db():
